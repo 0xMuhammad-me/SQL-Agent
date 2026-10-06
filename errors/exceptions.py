@@ -1,252 +1,67 @@
 from __future__ import annotations
-
-from enum import Enum
-from typing import Any, Mapping
-
-
-class ErrorCategory(str, Enum):
-    """High-level categories used by runtime error handling."""
-
-    LLM = "llm"
-    RATE_LIMIT = "rate_limit"
-    NETWORK = "network"
-    TIMEOUT = "timeout"
-    DATABASE = "database"
-    SQL_VALIDATION = "sql_validation"
-    PERMISSION = "permission"
-    TOOL = "tool"
-    PLANNING = "planning"
-    REFLECTION = "reflection"
-    CONFIGURATION = "configuration"
-    UNKNOWN = "unknown"
+from typing import Any
 
 
 class AgentError(Exception):
-    """
-    Base exception for errors that are meaningful to the agent runtime.
-    """
+    category = "unknown"
 
-    def __init__(
-        self,
-        message: str,
-        category: ErrorCategory,
-        *,
-        retryable: bool = False,
-        details: Mapping[str, Any] | None = None,
-        cause: BaseException | None = None,
-    ) -> None:
-        super().__init__(message)
-
-        self.message: str = message
-        self.category: ErrorCategory = category
-        self.retryable: bool = retryable
-        self.details: dict[str, Any] = dict(details or {})
-        self.cause: BaseException | None = cause
+    def __init__(self, message: str, *, retryable: bool = False, cause: BaseException | None = None,
+                 details: dict[str, Any] | None = None) -> None:
+        super().__init__(message);
+        self.retryable = retryable;
+        self.cause = cause;
+        self.details = dict(details or {})
 
 
-class LLMError(AgentError):
-    """Raised when an LLM operation fails."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        retryable: bool = False,
-        details: Mapping[str, Any] | None = None,
-        cause: BaseException | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.LLM,
-            retryable=retryable,
-            details=details,
-            cause=cause,
-        )
+class LLMError(AgentError): category = "llm"
 
 
-class RateLimitError(AgentError):
-    """Raised when an external API rate limit is reached."""
+class RateLimitError(LLMError):
+    category = "rate_limit"
 
-    def __init__(
-        self,
-        message: str,
-        *,
-        retryable: bool = True,
-        details: Mapping[str, Any] | None = None,
-        cause: BaseException | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.RATE_LIMIT,
-            retryable=retryable,
-            details=details,
-            cause=cause,
-        )
+    def __init__(self, message: str, **kwargs: Any) -> None: kwargs.setdefault("retryable", True); super().__init__(
+        message, **kwargs)
 
 
-class NetworkError(AgentError):
-    """Raised when a network dependency is unavailable."""
+class NetworkError(LLMError):
+    category = "network"
 
-    def __init__(
-        self,
-        message: str,
-        *,
-        retryable: bool = True,
-        details: Mapping[str, Any] | None = None,
-        cause: BaseException | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.NETWORK,
-            retryable=retryable,
-            details=details,
-            cause=cause,
-        )
+    def __init__(self, message: str, **kwargs: Any) -> None: kwargs.setdefault("retryable", True); super().__init__(
+        message, **kwargs)
 
 
-class ExternalTimeoutError(AgentError):
-    """Raised when an external dependency exceeds its timeout."""
+class ExternalTimeoutError(LLMError):
+    category = "timeout"
 
-    def __init__(
-        self,
-        message: str,
-        *,
-        retryable: bool = True,
-        details: Mapping[str, Any] | None = None,
-        cause: BaseException | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.TIMEOUT,
-            retryable=retryable,
-            details=details,
-            cause=cause,
-        )
+    def __init__(self, message: str, **kwargs: Any) -> None: kwargs.setdefault("retryable", True); super().__init__(
+        message, **kwargs)
 
 
-class DatabaseError(AgentError):
-    """Raised when database interaction fails."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        retryable: bool = False,
-        details: Mapping[str, Any] | None = None,
-        cause: BaseException | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.DATABASE,
-            retryable=retryable,
-            details=details,
-            cause=cause,
-        )
+class DatabaseError(AgentError): category = "database"
 
 
-class SQLValidationError(AgentError):
-    """Raised when generated SQL violates validation or security rules."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        details: Mapping[str, Any] | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.SQL_VALIDATION,
-            retryable=False,
-            details=details,
-        )
+class SQLValidationError(AgentError): category = "sql_validation"
 
 
-class PermissionDeniedError(AgentError):
-    """Raised when a requested operation is not allowed."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        details: Mapping[str, Any] | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.PERMISSION,
-            retryable=False,
-            details=details,
-        )
+class PermissionDeniedError(AgentError): category = "permission"
 
 
-class ToolExecutionError(AgentError):
-    """Raised when a registered tool fails during execution."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        retryable: bool = False,
-        details: Mapping[str, Any] | None = None,
-        cause: BaseException | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.TOOL,
-            retryable=retryable,
-            details=details,
-            cause=cause,
-        )
+class SecurityPolicyError(AgentError): category = "security"
 
 
-class PlanningError(AgentError):
-    """Raised when the planner cannot produce a valid execution plan."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        details: Mapping[str, Any] | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.PLANNING,
-            retryable=False,
-            details=details,
-        )
+class QueryCostError(AgentError): category = "query_cost"
 
 
-class ReflectionError(AgentError):
-    """Raised when the reflection stage fails."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        retryable: bool = False,
-        details: Mapping[str, Any] | None = None,
-        cause: BaseException | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.REFLECTION,
-            retryable=retryable,
-            details=details,
-            cause=cause,
-        )
+class PlanningError(AgentError): category = "planning"
 
 
-class ConfigurationError(AgentError):
-    """Raised when application configuration is invalid."""
+class ReflectionError(AgentError): category = "reflection"
 
-    def __init__(
-        self,
-        message: str,
-        *,
-        details: Mapping[str, Any] | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            ErrorCategory.CONFIGURATION,
-            retryable=False,
-            details=details,
-        )
+
+class ConfigurationError(AgentError): category = "configuration"
+
+
+class InfrastructureError(AgentError): category = "infrastructure"
+
+
+class ResultPolicyError(AgentError): category = "result_policy"
