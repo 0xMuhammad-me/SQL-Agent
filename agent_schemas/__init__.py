@@ -3,8 +3,9 @@ from .agent_outputs import (
     ReflectionResult,
     SQLGenerationResult,
     SQLRepairResult,
+    SQLReviewIssue,
+    SQLReviewResult,
 )
-
 from .query_spec import (
     FilterOperator,
     QueryFilter,
@@ -13,9 +14,8 @@ from .query_spec import (
     SortDirection,
     SortSpec,
     TimeRange,
-    TimeRangeType,
+    TimeRangeType
 )
-
 
 __all__ = [
     "FilterOperator",
@@ -30,4 +30,6 @@ __all__ = [
     "SortSpec",
     "TimeRange",
     "TimeRangeType",
+    "SQLReviewIssue",
+    "SQLReviewResult",
 ]

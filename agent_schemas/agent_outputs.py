@@ -4,192 +4,125 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class SQLGenerationResult(BaseModel):
-    """
-    Structured output returned by the SQL generation agent.
-
-    This model validates the structure and consistency of the LLM output.
-    It does NOT validate SQL safety or correctness.
-    """
-
     model_config = ConfigDict(extra="forbid")
-
-    status: Literal["query", "clarification_required"] = Field(
-        description=(
-            "Indicates whether a query was generated or "
-            "clarification is required."
-        ),
-    )
-
-    sql: str | None = Field(
-        default=None,
-        description=(
-            "One generated read-only SQL statement. "
-            "Backend validation is still required."
-        ),
-    )
-
-    parameters: dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Named bind parameters used by the SQL statement. "
-            "Keys must correspond to SQL placeholders."
-        ),
-    )
-
-    clarification_question: str | None = Field(
-        default=None,
-        max_length=2000,
-        description=(
-            "Concise clarification question when the request "
-            "cannot be resolved safely."
-        ),
-    )
+    status: Literal["query", "clarification_required"]
+    sql: str | None = None
+    parameters: list[SQLParameter] = Field(default_factory=list)
+    clarification_question: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
-    def validate_consistency(self) -> SQLGenerationResult:
-        """
-        Validate consistency between status, SQL, parameters,
-        and clarification fields.
-        """
-
+    def validate_consistency(self) -> "SQLGenerationResult":
         if self.status == "query":
 
-            if not self.sql:
-                raise ValueError(
-                    "status='query' requires sql."
-                )
-
-            if self.clarification_question is not None:
-                raise ValueError(
-                    "status='query' cannot contain clarification_question."
-                )
-
-            return self
-
-        if self.status == "clarification_required":
-
-            if self.sql is not None:
-                raise ValueError(
-                    "status='clarification_required' requires sql=null."
-                )
-
-            if self.parameters:
-                raise ValueError(
-                    "Clarification output cannot contain parameters."
-                )
-
-            if not self.clarification_question:
-                raise ValueError(
-                    "Clarification output requires clarification_question."
-                )
-
+            if not self.sql: raise ValueError("status='query' requires sql.")
+            if self.clarification_question is not None: raise ValueError(
+                "Query output cannot contain clarification_question.")
+        else:
+            if self.sql is not None or self.parameters: raise ValueError(
+                "Clarification output cannot contain SQL or parameters.")
+            if not self.clarification_question: raise ValueError(
+                "Clarification output requires clarification_question.")
         return self
 
 
 class SQLRepairResult(BaseModel):
-    """
-    Structured output returned by the SQL repair agent.
-
-    This model only describes the repair agent response.
-    The backend must independently validate the repaired SQL.
-    """
-
     model_config = ConfigDict(extra="forbid")
-
-    status: Literal["repaired", "clarification_required", "cannot_repair"] = Field(
-        description=(
-            "Indicates whether SQL was repaired, clarification "
-            "is needed, or the issue cannot be safely repaired."
-        ),
-    )
-
-    sql: str | None = Field(default=None, description="Repaired read-only SQL statement.")
-
-    parameters: dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Named bind parameters corresponding to the repaired SQL."
-        ),
-    )
-
-    clarification_question: str | None = Field(
-        default=None,
-        max_length=2000,
-        description=(
-            "Clarification question when repair cannot proceed "
-            "without additional user information."
-        ),
-    )
+    status: Literal["repaired", "clarification_required", "cannot_repair"]
+    sql: str | None = None
+    parameters: list[SQLParameter] = Field(default_factory=list)
+    clarification_question: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
-    def validate_consistency(self) -> SQLRepairResult:
-        """
-        Validate consistency between repair status and returned fields.
-        """
-
+    def validate_consistency(self) -> "SQLRepairResult":
         if self.status == "repaired":
 
-            if not self.sql:
-                raise ValueError(
-                    "status='repaired' requires sql."
-                )
+            if not self.sql: raise ValueError("status='repaired' requires sql.")
 
+            if self.clarification_question is not None: raise ValueError(
+                "Repaired output cannot contain clarification_question.")
+
+        elif self.status == "clarification_required":
+
+            if self.sql is not None or self.parameters: raise ValueError(
+                "Clarification output cannot contain SQL or parameters.")
+
+            if not self.clarification_question: raise ValueError(
+                "Clarification output requires clarification_question.")
+
+        elif self.sql is not None or self.parameters or self.clarification_question is not None:
+            raise ValueError("Cannot-repair output must be empty except for status.")
+        return self
+
+
+class SQLReviewIssue(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal[
+        "semantic",
+        "metric",
+        "filter",
+        "time_logic",
+        "sort",
+        "aggregation",
+        "join",
+        "schema",
+        "parameter",
+        "business_rule",
+        "grain",
+        "result_shape",
+    ]
+    severity: Literal["low", "medium", "high", "critical"]
+    description: str = Field(min_length=1, max_length=3000)
+    evidence: str = Field(min_length=1, max_length=3000)
+
+
+class SQLReviewResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    verdict: Literal[
+        "pass",
+        "repair",
+        "clarification_required",
+        "fail",
+        "inconclusive",
+    ]
+    confidence: float = Field(ge=0.0, le=1.0)
+    issues: list[SQLReviewIssue] = Field(default_factory=list)
+    repair_instructions: list[str] = Field(default_factory=list)
+    clarification_question: str | None = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_consistency(self) -> "SQLReviewResult":
+        if self.verdict == "pass":
+            if self.issues or self.repair_instructions:
+                raise ValueError("Pass cannot contain issues or repair instructions.")
+
+        if self.verdict == "repair":
+            if not self.issues or not self.repair_instructions:
+                raise ValueError("Repair requires issues and repair instructions.")
             if self.clarification_question is not None:
-                raise ValueError(
-                    "Repaired output cannot contain clarification_question."
-                )
+                raise ValueError("Repair cannot contain clarification_question.")
 
-            return self
-
-        if self.status == "clarification_required":
-
-            if self.sql is not None:
-                raise ValueError(
-                    "Clarification output requires sql=null."
-                )
-
-            if self.parameters:
-                raise ValueError(
-                    "Clarification output cannot contain parameters."
-                )
-
+        if self.verdict == "clarification_required":
             if not self.clarification_question:
-                raise ValueError(
-                    "Clarification output requires clarification_question."
-                )
+                raise ValueError("Clarification required verdict needs clarification_question.")
+            if self.repair_instructions:
+                raise ValueError("Clarification required cannot contain repair instructions.")
 
-            return self
+        if self.verdict == "fail" and not self.issues:
+            raise ValueError("Fail requires at least one issue.")
 
-        if self.status == "cannot_repair":
+        if self.verdict == "inconclusive" and not self.issues:
+            raise ValueError("Inconclusive requires at least one issue.")
 
-            if self.sql is not None:
-                raise ValueError(
-                    "Cannot-repair output requires sql=null."
-                )
-
-            if self.parameters:
-                raise ValueError(
-                    "Cannot-repair output cannot contain parameters."
-                )
-
-            if self.clarification_question is not None:
-                raise ValueError(
-                    "Cannot-repair output cannot contain clarification_question."
-                )
+        if self.verdict != "clarification_required" and self.clarification_question is not None:
+            raise ValueError("clarification_question is only valid for clarification_required.")
 
         return self
 
 
 class ReflectionIssue(BaseModel):
-    """
-    One diagnostic issue identified by the reflection agent.
-
-    Reflection is advisory and does not replace deterministic
-    backend validation or security controls.
-    """
-
     model_config = ConfigDict(extra="forbid")
-
     type: Literal[
         "syntax",
         "execution",
@@ -201,103 +134,62 @@ class ReflectionIssue(BaseModel):
         "business_rule",
         "metric",
         "result_sanity",
-        "infrastructure",
-    ] = Field(
-        description="Category of the identified issue.",
-    )
-
-    severity: Literal[
-        "low",
-        "medium",
-        "high",
-        "critical",
-    ] = Field(
-        description="Severity assigned by the reflection agent.",
-    )
-
-    description: str = Field(
-        min_length=1,
-        max_length=3000,
-        description=(
-            "Concise description of the identified issue."
-        ),
-    )
-
-    evidence: str = Field(
-        min_length=1,
-        max_length=3000,
-        description=(
-            "Evidence from the supplied execution context "
-            "supporting the issue."
-        ),
-    )
+        "infrastructure"]
+    severity: Literal["low", "medium", "high", "critical"]
+    description: str = Field(min_length=1, max_length=3000)
+    evidence: str = Field(min_length=1, max_length=3000)
 
 
 class ReflectionResult(BaseModel):
-    """
-    Structured diagnostic output returned by the reflection agent.
-
-    This result is a diagnostic signal only.
-    It cannot authorize execution or override backend policy.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-
-    verdict: Literal[
-        "pass",
-        "repair",
-        "clarify",
-        "reject",
-        "inconclusive",
-    ] = Field(description="Reflection's semantic assessment of the executed query.")
-
-    confidence: float = Field(ge=0.0, le=1.0, description="Model confidence in the reflection assessment.")
-
+    model_config = ConfigDict(extra="forbid")
+    verdict: Literal["pass", "repair", "clarify", "reject", "inconclusive"]
+    confidence: float = Field(ge=0.0, le=1.0)
     issues: list[ReflectionIssue] = Field(
         default_factory=list,
         description=(
-            "Concrete issues identified during reflection."
+            "Diagnostic issues identified by reflection. "
+            "Must be [] when verdict='pass' or verdict='clarify'."
         ),
     )
-
     repair_instructions: list[str] = Field(
         default_factory=list,
         description=(
-            "Actionable SQL repair guidance when verdict='repair'."
+            "Actionable SQL repair guidance. "
+            "Must be [] unless verdict='repair'."
         ),
     )
+    clarification_question: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
-    def validate_consistency(self) -> ReflectionResult:
-        """
-        Validate relationships between verdict, issues,
-        and repair instructions.
-        """
+    def validate_consistency(self) -> "ReflectionResult":
+        if self.verdict == "pass" and (self.issues or self.repair_instructions): raise ValueError(
+            "Pass cannot contain issues or repair instructions.")
 
-        if self.verdict == "pass":
+        if self.verdict == "repair":
 
-            if self.issues:
-                raise ValueError(
-                    "verdict='pass' cannot contain issues."
-                )
+            if any(issue.type == "infrastructure" for issue in self.issues): raise ValueError(
+                "Infrastructure issues cannot trigger semantic repair.")
 
-            if self.repair_instructions:
-                raise ValueError(
-                    "verdict='pass' cannot contain repair_instructions."
-                )
+            if not self.issues or not self.repair_instructions: raise ValueError(
+                "Repair requires issues and repair instructions.")
 
-        if self.verdict != "repair":
+            if self.clarification_question is not None: raise ValueError(
+                "Repair cannot contain clarification_question.")
 
-            if self.repair_instructions:
-                raise ValueError(
-                    "repair_instructions require verdict='repair'."
-                )
+        elif self.repair_instructions:
+            raise ValueError("repair_instructions require verdict='repair'.")
 
-        if self.verdict == "repair" and not self.issues:
-            raise ValueError(
-                "verdict='repair' requires at least one issue."
-            )
+        if self.verdict == "clarify" and not self.clarification_question: raise ValueError(
+            "Clarify requires clarification_question.")
+
+        if self.verdict != "clarify" and self.clarification_question is not None: raise ValueError(
+            "clarification_question is only valid for clarify verdict.")
 
         return self
+
+
+class SQLParameter(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=100)
+    value: str | int | float | bool | None = None
