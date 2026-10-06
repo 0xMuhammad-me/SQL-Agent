@@ -106,3 +106,4 @@ def build_system_prompt(role_prompt: str) -> str:
         f"{BASE_SYSTEM_PROMPT}\n\n"
         f"{normalized_role_prompt}"
     )
+
