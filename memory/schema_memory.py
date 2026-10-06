@@ -1,88 +1,31 @@
 from __future__ import annotations
-
 import re
-
 from dataclasses import dataclass
 from typing import Iterable
-
-from metadata.schema_catalog import (
-    SCHEMA_CATALOG,
-    TableSchema,
-)
+from metadata.schema_catalog import SCHEMA_CATALOG, TableSchema
 
 
-@dataclass(frozen=True)
-class SchemaSearchResult:
-    """Represents a schema retrieval result."""
-
-    table: TableSchema
-    score: float
+@dataclass(frozen=True, slots=True)
+class SchemaSearchResult: table: TableSchema; score: float
 
 
 class SchemaMemory:
-    """
-    Provides deterministic retrieval over the database schema catalog.
-    """
-
     def __init__(self, tables: Iterable[TableSchema] = SCHEMA_CATALOG) -> None:
-        self._tables: tuple[TableSchema, ...] = tuple(tables)
-        self._table_map: dict[str, TableSchema] = {table.name: table for table in self._tables}
+        self._tables = tuple(tables);self._map = {t.name.lower(): t for t in self._tables}
 
-    @staticmethod
-    def _tokenize(text: str) -> set[str]:
+    def get_table(self, name: str) -> TableSchema | None:
+        return self._map.get(name.lower())
 
-        return {token for token in re.findall(r"[a-zA-Z0-9_]+", text.lower()) if len(token) > 1}
-
-    def get_table(self, table_name: str) -> TableSchema | None:
-        """
-        Get a table by exact name.
-
-        Returns:
-            TableSchema when the table exists, otherwise None.
-        """
-
-        return self._table_map.get(table_name)
-
-    def search(self, query: str, top_k: int = 8,) -> list[SchemaSearchResult]:
-        """
-        Retrieve the most relevant tables for a query.
-
-        This deterministic retriever is intentionally simple.
-        It can later be replaced by an embedding-based retriever.
-        """
-
-        query_tokens: set[str] = self._tokenize(query)
-
-        results: list[SchemaSearchResult] = []
-
-        for table in self._tables:
-
-            searchable_text: str = (table.name
-                                    + " "
-                                    + table.description
-                                    + " "
-                                    + " ".join(
-                        column.name
-                        for column in table.columns
-                    )
-                                    )
-
-            table_tokens: set[str] = self._tokenize(searchable_text)
-
-            overlap: int = len(query_tokens & table_tokens)
-
-            exact_table_match: bool = (table.name.lower() in query.lower())
-
-            score: float = float(overlap + (3 if exact_table_match else 0))
-
-            if score > 0:
-                results.append(SchemaSearchResult(table=table, score=score))
-
-        results.sort(key=lambda item: item.score, reverse=True)
-
-        return results[:top_k]
+    def search(self, query: str, top_k: int = 8) -> list[SchemaSearchResult]:
+        qt = set(re.findall(r"[a-zA-Z0-9_]+", query.lower()));
+        out = []
+        for t in self._tables:
+            txt = f"{t.name} {t.description} {' '.join(c.name for c in t.columns)}".lower();
+            ct = set(re.findall(r"[a-zA-Z0-9_]+", txt));
+            score = float(len(qt & ct) + (3 if t.name.lower() in query.lower() else 0))
+            if score > 0: out.append(SchemaSearchResult(t, score))
+        out.sort(key=lambda x: (-x.score, x.table.name));
+        return out[:top_k]
 
     def all_tables(self) -> tuple[TableSchema, ...]:
-        """Return all registered tables."""
-
         return self._tables
