@@ -1,130 +1,112 @@
 from __future__ import annotations
 
-import time
+from typing import Mapping, Sequence
 
-from typing import Any, Mapping, Sequence
-
+from agent_schemas import QuerySpec, SQLGenerationResult
 from core.context import AgentContext
-from agent_schemas.agent_outputs import SQLGenerationResult
-from agent_schemas.query_spec import QuerySpec
-
-from observability.logger import AgentLogger
-
 from prompts.sql_generation_prompt import (
-    PROMPT_VERSION as SQL_GENERATION_PROMPT_VERSION,
-    PROMPT_NAME as SQL_GENERATION_PROMPT_NAME,
+    PROMPT_NAME,
+    PROMPT_VERSION,
     SQL_GENERATION_SYSTEM_PROMPT,
     build_sql_generation_prompt,
 )
 
-from .base_agent import BaseAgent, LLMClient
+from .base_agent import BaseAgent, agent_lifecycle
 
 
 class SQLGeneratorAgent(BaseAgent[SQLGenerationResult]):
     """Generate one parameterized read-only SQL statement."""
 
     agent_name: str = "sql_generator"
-    prompt_name: str = SQL_GENERATION_PROMPT_NAME
-    prompt_version: str = SQL_GENERATION_PROMPT_VERSION
+    prompt_name: str = PROMPT_NAME
+    prompt_version: str = PROMPT_VERSION
 
-    def __init__(self, *, llm_client: LLMClient, logger: AgentLogger, model_name: str | None = None) -> None:
-        super().__init__(llm_client=llm_client, logger=logger, model_name=model_name)
-
+    @agent_lifecycle
     def run(
             self,
             *,
             context: AgentContext,
             question: str,
             query_spec: QuerySpec,
-            schema_context: Sequence[Mapping[str, Any]],
+            schema_context: Sequence[Mapping[str, object]],
             relationship_context: Sequence[str],
-            business_context: Sequence[Mapping[str, Any]],
-            metric_context: Sequence[Mapping[str, Any]],
+            business_context: Sequence[Mapping[str, object]],
+            metric_context: Sequence[Mapping[str, object]],
+            glossary_context: Sequence[Mapping[str, object]] = (),
             dialect: str = "postgresql",
     ) -> SQLGenerationResult:
-
-        stage_name: str = "sql_generation"
-        started_at: float = time.perf_counter()
-
-        self._log_started(
+        user_prompt: str = build_sql_generation_prompt(
+            question=question,
+            query_spec=query_spec.model_dump(mode="json"),
+            schema_context=schema_context,
+            relationship_context=relationship_context,
+            business_context=business_context,
+            metric_context=metric_context,
+            glossary_context=glossary_context,
+            dialect=dialect,
+        )
+        result: SQLGenerationResult = self._structured(
             context=context,
-            stage_name=stage_name,
-            input_data={
-                "question": question,
-                "metric": query_spec.metric,
-                "dimensions": query_spec.dimensions,
-                "filter_count": len(
-                    query_spec.filters
-                ),
-                "schema_table_count": len(
-                    schema_context
-                ),
-            },
+            system_prompt=SQL_GENERATION_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            response_model=SQLGenerationResult,
+        )
+        if result.status == "query" and not result.sql:
+            raise ValueError("Query generation returned an empty SQL statement.")
+        return result
+
+    def _start_metadata(self, kwargs: dict[str, object]) -> dict[str, object]:
+        raw_query_spec: object = kwargs.get("query_spec")
+        query_spec: QuerySpec | None = (
+            raw_query_spec
+            if isinstance(raw_query_spec, QuerySpec)
+            else None
         )
 
-        try:
+        raw_question: object = kwargs.get("question")
+        question: str = (
+            raw_question
+            if isinstance(raw_question, str)
+            else ""
+        )
 
-            user_prompt: str = (
-                build_sql_generation_prompt(
-                    question=question,
-                    query_spec=query_spec.model_dump(mode="json"),
-                    schema_context=list(schema_context),
-                    relationship_context=list(relationship_context),
-                    business_context=list(business_context),
-                    metric_context=list(metric_context),
-                    dialect=dialect,
-                )
-            )
+        raw_schema_context: object = kwargs.get("schema_context", ())
+        schema_context: Sequence[Mapping[str, object]] = (
+            raw_schema_context
+            if isinstance(raw_schema_context, Sequence)
+               and not isinstance(raw_schema_context, (str, bytes))
+            else ()
+        )
 
-            result: SQLGenerationResult = (
-                self.llm_client.generate_structured(
-                    system_prompt=SQL_GENERATION_SYSTEM_PROMPT,
-                    user_prompt=user_prompt,
-                    response_model=SQLGenerationResult,
-                    model=self.model_name,
-                )
-            )
+        return {
+            "question_length": len(question),
+            "metric": query_spec.metric if query_spec else None,
+            "dimension_count": (
+                len(query_spec.dimensions)
+                if query_spec
+                else None
+            ),
+            "schema_table_count": len(schema_context),
+            "schema_tables": [
+                str(item.get("name"))
+                for item in schema_context
+                if isinstance(item, Mapping)
+                   and item.get("name") is not None
+            ],
+        }
 
-            self._validate_output(result)
-            elapsed_ms: float = (time.perf_counter() - started_at) * 1000
-
-            self._log_completed(
-                context=context,
-                stage_name=stage_name,
-                output_data={
-                    "status": result.status,
-                    "sql_present": result.sql is not None,
-                    "parameter_names": list(result.parameters.keys()),
-                    "parameter_count": len(result.parameters)},
-                latency_ms=elapsed_ms,
-            )
-
-            return result
-
-        except Exception as exc:
-            self._log_error(context=context, stage_name=stage_name, error=exc)
-            raise self._raise_llm_error(exc) from exc
-
-    @staticmethod
-    def _validate_output(result: SQLGenerationResult) -> None:
-        """Validate basic consistency of the model output."""
-
-        if result.status == "query":
-            if not result.sql:
-                raise ValueError("Query status requires SQL.")
-
-            if result.clarification_question:
-                raise ValueError("Query status cannot contain a clarification question.")
-
-            return
-
-        if result.status == "clarification_required":
-
-            if result.sql is not None:
-                raise ValueError("Clarification status cannot contain SQL.")
-
-            if result.parameters:
-                raise ValueError("Clarification status cannot contain parameters.")
-
-            if not result.clarification_question:
-                raise ValueError("Clarification status requires a question.")
+    def _result_metadata(self, result: SQLGenerationResult) -> dict[str, object]:
+        return {
+            "status": result.status,
+            "sql_present": result.sql is not None,
+            "sql": result.sql,
+            "parameters": [
+                {
+                    "name": parameter.name,
+                    "value": parameter.value,
+                }
+                for parameter in result.parameters
+            ],
+            "parameter_count": len(result.parameters),
+            "clarification_question": result.clarification_question,
+        }
