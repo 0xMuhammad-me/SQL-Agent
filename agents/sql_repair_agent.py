@@ -1,187 +1,70 @@
 from __future__ import annotations
 
-import time
-
 from typing import Any, Mapping, Sequence
 
+from agent_schemas import SQLRepairResult, QuerySpec
 from core.context import AgentContext
-from errors.exceptions import PlanningError
-from agent_schemas.agent_outputs import SQLRepairResult
-
-from observability.logger import AgentLogger
-
 from prompts.sql_repair_prompt import (
-    PROMPT_VERSION as SQL_REPAIR_PROMPT_VERSION,
-    PROMPT_NAME as SQL_REPAIR_PROMPT_NAME,
+    PROMPT_NAME,
+    PROMPT_VERSION,
     SQL_REPAIR_SYSTEM_PROMPT,
     build_sql_repair_prompt,
 )
 
-from .base_agent import BaseAgent, LLMClient
-
-REPAIRABLE_ISSUE_TYPES: frozenset[str] = frozenset(
-    {
-        "syntax",
-        "schema",
-        "semantic",
-        "join",
-        "aggregation",
-        "date_logic",
-        "business_rule",
-        "metric",
-    }
-)
-
-NON_REPAIRABLE_ISSUE_TYPES: frozenset[str] = frozenset(
-    {
-        "security",
-        "permission",
-        "privacy",
-        "infrastructure",
-    }
-)
+from .base_agent import BaseAgent, agent_lifecycle
 
 
-class SQLRepairAgent(
-    BaseAgent[SQLRepairResult]
-):
-    """Repair SQL only for explicitly repairable SQL-related issues."""
+class SQLRepairAgent(BaseAgent[SQLRepairResult]):
+    """Repair SQL defects without becoming a security policy authority."""
 
     agent_name: str = "sql_repair"
-    prompt_name: str = SQL_REPAIR_PROMPT_NAME
-    prompt_version: str = SQL_REPAIR_PROMPT_VERSION
+    prompt_name: str = PROMPT_NAME
+    prompt_version: str = PROMPT_VERSION
 
-    def __init__(self, *, llm_client: LLMClient, logger: AgentLogger, model_name: str | None = None) -> None:
-        super().__init__(llm_client=llm_client, logger=logger, model_name=model_name)
-
+    @agent_lifecycle
     def run(
             self,
             *,
             context: AgentContext,
             question: str,
+            query_spec: QuerySpec,
             current_sql: str,
             current_parameters: Mapping[str, Any],
             issues: Sequence[Mapping[str, Any]],
-            schema_context: Sequence[Mapping[str, Any]],
+            schema_context: Sequence[Mapping[str, object]],
             relationship_context: Sequence[str],
-            business_context: Sequence[Mapping[str, Any]],
-            metric_context: Sequence[Mapping[str, Any]],
+            business_context: Sequence[Mapping[str, object]],
+            metric_context: Sequence[Mapping[str, object]],
+            repair_instructions: Sequence[str] = (),
+            glossary_context: Sequence[Mapping[str, object]] = (),
             dialect: str = "postgresql",
     ) -> SQLRepairResult:
-
-        stage_name: str = "sql_repair"
-        self._validate_repair_issues(issues)
-
-        started_at: float = time.perf_counter()
-
-        self._log_started(
+        user_prompt: str = build_sql_repair_prompt(
+            question=question,
+            query_spec=query_spec,
+            current_sql=current_sql,
+            repair_instructions=repair_instructions,
+            current_parameters=current_parameters,
+            issues=issues,
+            schema_context=schema_context,
+            relationship_context=relationship_context,
+            business_context=business_context,
+            metric_context=metric_context,
+            glossary_context=glossary_context,
+            dialect=dialect,
+        )
+        return self._structured(
             context=context,
-            stage_name=stage_name,
-            input_data={
-                "issue_count": len(issues),
-                "issue_types": sorted(
-                    {
-                        str(issue.get("type"))
-                        for issue in issues
-                    }
-                ),
-            },
+            system_prompt=SQL_REPAIR_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            response_model=SQLRepairResult,
         )
 
-        try:
-
-            user_prompt: str = (
-                build_sql_repair_prompt(
-                    question=question,
-                    current_sql=current_sql,
-                    current_parameters=dict(current_parameters),
-                    issues=list(issues),
-                    schema_context=list(schema_context),
-                    relationship_context=list(relationship_context),
-                    business_context=list(business_context),
-                    metric_context=list(metric_context),
-                    dialect=dialect,
-                )
-            )
-
-            result: SQLRepairResult = (
-                self.llm_client.generate_structured(
-                    system_prompt=(
-                        SQL_REPAIR_SYSTEM_PROMPT
-                    ),
-                    user_prompt=user_prompt,
-                    response_model=SQLRepairResult,
-                    model=self.model_name,
-                )
-            )
-
-            self._validate_output(result)
-            elapsed_ms: float = (time.perf_counter() - started_at) * 1000
-
-            self._log_completed(
-                context=context,
-                stage_name=stage_name,
-                output_data={
-                    "status": result.status,
-                    "sql_present": result.sql is not None,
-                    "parameter_names": list(result.parameters.keys()),
-                },
-                latency_ms=elapsed_ms,
-            )
-
-            return result
-
-        except Exception as exc:
-            self._log_error(context=context, stage_name=stage_name, error=exc)
-            raise self._raise_llm_error(exc) from exc
-
-    @staticmethod
-    def _validate_repair_issues(issues: Sequence[Mapping[str, Any]]) -> None:
-        """Prevent non-repairable failures from reaching the repair model."""
-
-        for issue in issues:
-
-            issue_type: str = str(
-                issue.get("type", "")
-            ).lower()
-
-            if issue_type in NON_REPAIRABLE_ISSUE_TYPES:
-                raise PlanningError("Non-repairable issue cannot be sent to SQL repair agent.")
-
-            if issue_type not in REPAIRABLE_ISSUE_TYPES:
-                raise PlanningError(f"Unsupported repair issue type: {issue_type}")
-
-    @staticmethod
-    def _validate_output(result: SQLRepairResult) -> None:
-        """Validate consistency of repair model output."""
-
-        if result.status == "repaired":
-
-            if not result.sql:
-                raise ValueError("Repaired status requires SQL.")
-
-            if result.clarification_question:
-                raise ValueError("Repaired status cannot contain clarification question.")
-
-            return
-
-        if result.status == "clarification_required":
-
-            if result.sql is not None:
-                raise ValueError("Clarification status cannot contain SQL.")
-
-            if result.parameters:
-                raise ValueError("Clarification status cannot contain parameters.")
-
-            if not result.clarification_question:
-                raise ValueError("Clarification status requires a question.")
-
-            return
-
-        if result.status == "cannot_repair":
-
-            if result.sql is not None:
-                raise ValueError("Cannot-repair status cannot contain SQL.")
-
-            if result.parameters:
-                raise ValueError("Cannot-repair status cannot contain parameters.")
+    def _result_metadata(self, result: SQLRepairResult) -> dict[str, object]:
+        return {
+            "status": result.status,
+            "sql_present": result.sql is not None,
+            "parameter_names": [parameter.name for parameter in result.parameters],
+            "parameter_count": len(result.parameters),
+            "clarification_question": result.clarification_question
+        }
