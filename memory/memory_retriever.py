@@ -1,74 +1,65 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
+from typing import Iterable
 
-from .business_memory import (
-    BusinessMemory,
-    BusinessSearchResult,
-)
+from agent_schemas import QuerySpec
+from metadata.schema_catalog import TableSchema
 
-from .metric_memory import (
-    MetricMemory,
-    MetricSearchResult,
-)
-
-from .schema_memory import (
-    SchemaMemory,
-    SchemaSearchResult,
-)
+from .business_memory import BusinessMemory, BusinessSearchResult
+from .metric_memory import MetricMemory, MetricSearchResult
+from .schema_memory import SchemaMemory, SchemaSearchResult
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MemoryContext:
-    """
-    Relevant semantic context retrieved for one user request.
-    """
-    schema: list[SchemaSearchResult]
-    business: list[BusinessSearchResult]
-    metrics: list[MetricSearchResult]
+    schema: tuple[SchemaSearchResult, ...]
+    business: tuple[BusinessSearchResult, ...]
+    metrics: tuple[MetricSearchResult, ...]
 
 
 class MemoryRetriever:
-    """
-    Coordinates retrieval across schema, business, and metric memory.
-    """
+    """Retrieve relevant semantic metadata from memory indexes."""
 
-    def __init__(self, schema_memory: SchemaMemory, business_memory: BusinessMemory, metric_memory: MetricMemory) -> None:
-
+    def __init__(
+        self,
+        schema_memory: SchemaMemory,
+        business_memory: BusinessMemory,
+        metric_memory: MetricMemory,
+    ) -> None:
         self.schema_memory: SchemaMemory = schema_memory
         self.business_memory: BusinessMemory = business_memory
         self.metric_memory: MetricMemory = metric_memory
 
+    def retrieve(
+        self,
+        query_spec: QuerySpec,
+        *,
+        schema_top_k: int = 6,
+        business_top_k: int = 5,
+        metric_top_k: int = 20,
+    ) -> MemoryContext:
+        query_text: str = self._query_text(query_spec)
+        metrics: list[MetricSearchResult] = self.metric_memory.search(query_text, metric_top_k)
+        business: list[BusinessSearchResult] = self.business_memory.search(query_text, business_top_k)
+        schema: list[SchemaSearchResult] = self.schema_memory.search(query_text, schema_top_k)
+        return MemoryContext(tuple(schema), tuple(business), tuple(metrics))
 
-    def retrieve(self, question: str, *, schema_top_k: int = 8, business_top_k: int = 6, metric_top_k: int = 6) -> MemoryContext:
-        """
-        Retrieve relevant semantic information for a question.
-
-        Returns:
-            MemoryContext containing ranked candidates.
-        """
-
-        schema_results: list[SchemaSearchResult] = self.schema_memory.search(question, top_k=schema_top_k)
-        business_results: list[BusinessSearchResult] = self.business_memory.search(question, top_k=business_top_k)
-        metric_results: list[MetricSearchResult] = self.metric_memory.search(question, top_k=metric_top_k)
-
-        return MemoryContext(
-            schema=schema_results,
-            business=business_results,
-            metrics=metric_results,
-        )
-
+    def get_tables(self, names: Iterable[str]) -> tuple[SchemaSearchResult, ...]:
+        results: list[SchemaSearchResult] = []
+        for name in dict.fromkeys(item.lower() for item in names if item):
+            table: TableSchema | None = self.schema_memory.get_table(name)
+            if table is not None:
+                results.append(SchemaSearchResult(table, 100.0))
+        results.sort(key=lambda item: item.table.name)
+        return tuple(results)
 
     @staticmethod
-    def to_prompt_context(memory_context: MemoryContext) -> dict[str, list[dict]]:
-        """
-        Convert memory results into a prompt-safe serializable structure.
-
-        Returns:
-            Dictionary containing only metadata required by LLM prompts.
-        """
-        return {
-            "schema": [asdict(result.table) for result in memory_context.schema],
-            "business": [{"name": result.name, "definition": result.definition} for result in memory_context.business],
-            "metrics": [{"name": result.name, "definition": result.definition} for result in memory_context.metrics],
-        }
+    def _query_text(query_spec: QuerySpec) -> str:
+        parts: list[str] = [query_spec.intent or "", query_spec.metric or ""]
+        parts.extend(query_spec.dimensions)
+        parts.extend(item.field for item in query_spec.filters)
+        if query_spec.time_range is not None:
+            parts.append(query_spec.time_range.field)
+        parts.extend(item.field for item in query_spec.sort)
+        return " ".join(part for part in parts if part)
