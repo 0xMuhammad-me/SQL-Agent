@@ -1,83 +1,28 @@
 from __future__ import annotations
 
-import csv
+import json
 from pathlib import Path
 from typing import Any
 
 from .evaluator import BenchmarkEvaluator, EvaluationResult
-from .metrics import EvaluationMetrics, MetricsCalculator
+from .metrics import calculate_metrics, results_to_dicts
 
 
 class BenchmarkRunner:
-    """
-    Loads benchmark questions and runs evaluation.
-    """
+    """Run the benchmark and persist a machine-readable report."""
 
-    def __init__(self, evaluator: BenchmarkEvaluator, metrics_calculator: MetricsCalculator | None = None) -> None:
+    def __init__(self, evaluator: BenchmarkEvaluator) -> None:
         self._evaluator: BenchmarkEvaluator = evaluator
-        self._metrics_calculator: MetricsCalculator = (
-            metrics_calculator
-            if metrics_calculator is not None
-            else MetricsCalculator()
-        )
 
-    def run(self, benchmark_path: str | Path) -> tuple[list[EvaluationResult], EvaluationMetrics]:
-        """
-        Run the complete benchmark.
-        """
-
-        questions: list[dict[str, Any]] = self._load_csv(benchmark_path)
-
-        results: list[EvaluationResult] = []
-
-        for item in questions:
-            result: EvaluationResult = (
-                self._evaluator.evaluate(
-                    question_id=int(item["question_id"]),
-                    category=str(item["category"]),
-                    difficulty=str(item["difficulty"]),
-                    question=str(item["question"]),
-                    expected_sql=str(item["expected_sql"]),
-                )
-            )
-
-            results.append(result)
-
-        metrics: EvaluationMetrics = self._metrics_calculator.calculate(results)
-        return results, metrics
-
-    @staticmethod
-    def _load_csv(benchmark_path: str | Path) -> list[dict[str, Any]]:
-        """
-        Load benchmark CSV.
-        """
-
-        path: Path = Path(benchmark_path)
-
-        if not path.exists():
-            raise FileNotFoundError(f"Benchmark file not found: {path}")
-
-        rows: list[dict[str, Any]] = []
-        with path.open(mode="r", encoding="utf-8", newline="") as file_handle:
-            reader: csv.DictReader[str] = csv.DictReader(file_handle)
-
-            required_columns: set[str] = {
-                "question_id",
-                "category",
-                "difficulty",
-                "question",
-                "expected_sql",
-                "tables_required",
-            }
-
-            actual_columns: set[str] = set(reader.fieldnames or [])
-
-            missing_columns: set[str] = (required_columns - actual_columns)
-
-            if missing_columns:
-                raise ValueError(f"Benchmark CSV is missing columns: {sorted(missing_columns)}")
-
-            for row in reader:
-                rows.append(dict(row))
-
-        return rows
+    def run(self, *, dataset_path: str | Path, report_path: str | Path | None = None) -> dict[str, Any]:
+        questions = self._evaluator.load_csv(dataset_path)
+        results: list[EvaluationResult] = [self._evaluator.evaluate(item) for item in questions]
+        report: dict[str, Any] = {
+            "metrics": calculate_metrics(results),
+            "results": results_to_dicts(results),
+        }
+        if report_path is not None:
+            path = Path(report_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        return report

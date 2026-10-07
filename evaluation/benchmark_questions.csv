@@ -1,6 +1,6 @@
 question_id,category,difficulty,question,expected_sql,tables_required
 1,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
-2,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
+2,basic,easy,How many products are available?,SELECT COUNT(DISTINCT product_variants.product_id) FROM product_variants WHERE product_variants.stock_quantity > 0;,{product_variants}
 3,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 4,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 5,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
@@ -9,12 +9,10 @@ question_id,category,difficulty,question,expected_sql,tables_required
 8,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 9,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 10,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
-11,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 12,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 13,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 14,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 15,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
-16,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 17,aggregation,easy,What is the average product price for brand Oakley?,SELECT AVG(price) FROM products WHERE brand = 'Oakley';,{products}
 18,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 19,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
@@ -39,10 +37,7 @@ question_id,category,difficulty,question,expected_sql,tables_required
 38,filtering,easy,How many products are in category eyeglasses?,SELECT COUNT(*) FROM products WHERE category = 'eyeglasses';,{products}
 39,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 40,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
-41,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
-42,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 43,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
-44,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 45,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 46,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 47,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
@@ -53,9 +48,7 @@ question_id,category,difficulty,question,expected_sql,tables_required
 52,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 53,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
 54,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
-55,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 56,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
-57,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 58,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 59,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 60,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
@@ -65,11 +58,9 @@ question_id,category,difficulty,question,expected_sql,tables_required
 64,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 65,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 66,aggregation,easy,What is the average product price for brand Lunato?,SELECT AVG(price) FROM products WHERE brand = 'Lunato';,{products}
-67,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 68,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 69,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 70,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
-71,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 72,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 73,aggregation,easy,What is the average product price for brand Ray-Ban?,SELECT AVG(price) FROM products WHERE brand = 'Ray-Ban';,{products}
 74,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
@@ -85,7 +76,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 84,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 85,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 86,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
-87,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 88,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 89,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 90,filtering,easy,How many products are in category sports_glasses?,SELECT COUNT(*) FROM products WHERE category = 'sports_glasses';,{products}
@@ -108,7 +98,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 107,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 108,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 109,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
-110,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 111,aggregation,easy,What is the average product price for brand Gucci?,SELECT AVG(price) FROM products WHERE brand = 'Gucci';,{products}
 112,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 113,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
@@ -132,17 +121,14 @@ question_id,category,difficulty,question,expected_sql,tables_required
 131,aggregation,easy,What is the average product price for brand Oakley?,SELECT AVG(price) FROM products WHERE brand = 'Oakley';,{products}
 132,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 133,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
-134,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 135,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 136,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 137,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
-138,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 139,filtering,easy,How many products are in category eyeglasses?,SELECT COUNT(*) FROM products WHERE category = 'eyeglasses';,{products}
 140,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 141,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 142,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 143,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
-144,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 145,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 146,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 147,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
@@ -154,7 +140,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 153,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 154,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 155,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
-156,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 157,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 158,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 159,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
@@ -162,7 +147,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 161,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 162,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 163,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
-164,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 165,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 166,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 167,filtering,easy,How many products are in category reading_glasses?,SELECT COUNT(*) FROM products WHERE category = 'reading_glasses';,{products}
@@ -173,7 +157,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 172,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 173,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 174,filtering,easy,How many products are in category sports_glasses?,SELECT COUNT(*) FROM products WHERE category = 'sports_glasses';,{products}
-175,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 176,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 177,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 178,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
@@ -192,19 +175,15 @@ question_id,category,difficulty,question,expected_sql,tables_required
 191,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 192,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
 193,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
-194,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 195,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 196,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 197,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 198,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 199,aggregation,easy,What is the average product price for brand Ray-Ban?,SELECT AVG(price) FROM products WHERE brand = 'Ray-Ban';,{products}
 200,aggregation,easy,What is the average product price for brand Gucci?,SELECT AVG(price) FROM products WHERE brand = 'Gucci';,{products}
-201,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
-202,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 203,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 204,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
 205,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
-206,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 207,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 208,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 209,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
@@ -230,16 +209,13 @@ question_id,category,difficulty,question,expected_sql,tables_required
 229,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
 230,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 231,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
-232,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 233,aggregation,easy,What is the average product price for brand Oakley?,SELECT AVG(price) FROM products WHERE brand = 'Oakley';,{products}
-234,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 235,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 236,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 237,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 238,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 239,aggregation,easy,What is the average product price for brand Gucci?,SELECT AVG(price) FROM products WHERE brand = 'Gucci';,{products}
 240,aggregation,easy,What is the average product price for brand Ray-Ban?,SELECT AVG(price) FROM products WHERE brand = 'Ray-Ban';,{products}
-241,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 242,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 243,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 244,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
@@ -247,7 +223,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 246,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 247,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 248,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
-249,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 250,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 251,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
 252,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
@@ -260,7 +235,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 259,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 260,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 261,aggregation,easy,What is the average product price for brand Ray-Ban?,SELECT AVG(price) FROM products WHERE brand = 'Ray-Ban';,{products}
-262,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 263,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 264,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 265,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
@@ -273,14 +247,12 @@ question_id,category,difficulty,question,expected_sql,tables_required
 272,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 273,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 274,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
-275,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 276,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 277,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 278,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 279,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 280,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 281,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
-282,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 283,aggregation,easy,What is the average product price for brand Oakley?,SELECT AVG(price) FROM products WHERE brand = 'Oakley';,{products}
 284,aggregation,easy,What is the average product price for brand Gucci?,SELECT AVG(price) FROM products WHERE brand = 'Gucci';,{products}
 285,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
@@ -293,13 +265,11 @@ question_id,category,difficulty,question,expected_sql,tables_required
 292,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 293,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 294,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
-295,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 296,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 297,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 298,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 299,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 300,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
-301,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 302,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 303,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 304,aggregation,easy,What is the average product price for brand Oakley?,SELECT AVG(price) FROM products WHERE brand = 'Oakley';,{products}
@@ -343,21 +313,17 @@ question_id,category,difficulty,question,expected_sql,tables_required
 341,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 342,filtering,easy,How many products are in category sunglasses?,SELECT COUNT(*) FROM products WHERE category = 'sunglasses';,{products}
 343,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
-344,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 345,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 346,filtering,easy,How many products are in category sunglasses?,SELECT COUNT(*) FROM products WHERE category = 'sunglasses';,{products}
 347,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
-348,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 349,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 350,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 351,aggregation,easy,What is the average product price for brand Prada?,SELECT AVG(price) FROM products WHERE brand = 'Prada';,{products}
-352,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 353,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 354,aggregation,easy,What is the average product price for brand Gucci?,SELECT AVG(price) FROM products WHERE brand = 'Gucci';,{products}
 355,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 356,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 357,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
-358,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 359,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 360,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 361,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
@@ -374,18 +340,14 @@ question_id,category,difficulty,question,expected_sql,tables_required
 372,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
 373,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 374,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
-375,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 376,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 377,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
 378,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 379,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
-380,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
-381,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 382,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 383,aggregation,easy,What is the average product price for brand Gucci?,SELECT AVG(price) FROM products WHERE brand = 'Gucci';,{products}
 384,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 385,filtering,easy,How many products are in category blue_light?,SELECT COUNT(*) FROM products WHERE category = 'blue_light';,{products}
-386,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 387,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
 388,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 390,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
@@ -402,10 +364,7 @@ question_id,category,difficulty,question,expected_sql,tables_required
 401,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 402,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 403,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
-404,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 405,filtering,easy,How many products are in category blue_light?,SELECT COUNT(*) FROM products WHERE category = 'blue_light';,{products}
-406,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
-407,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 408,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 409,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 410,filtering,easy,How many products are in category blue_light?,SELECT COUNT(*) FROM products WHERE category = 'blue_light';,{products}
@@ -422,7 +381,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 421,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 422,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 423,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
-424,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 425,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 426,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 427,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
@@ -438,8 +396,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 437,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 438,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 439,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
-440,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
-441,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 442,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 443,filtering,easy,How many products are in category sports_glasses?,SELECT COUNT(*) FROM products WHERE category = 'sports_glasses';,{products}
 444,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
@@ -457,7 +413,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 456,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 457,aggregation,easy,What is the average product price for brand Lunato?,SELECT AVG(price) FROM products WHERE brand = 'Lunato';,{products}
 458,aggregation,easy,What is the average product price for brand Lunato?,SELECT AVG(price) FROM products WHERE brand = 'Lunato';,{products}
-459,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 460,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 461,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 462,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
@@ -500,7 +455,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 499,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 500,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 501,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
-502,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 503,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 504,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 505,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
@@ -512,12 +466,10 @@ question_id,category,difficulty,question,expected_sql,tables_required
 511,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 512,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 513,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
-514,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 515,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 516,filtering,easy,How many products are in category sports_glasses?,SELECT COUNT(*) FROM products WHERE category = 'sports_glasses';,{products}
 517,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 518,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
-519,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 520,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 521,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 522,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
@@ -527,7 +479,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 526,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 527,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 528,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
-529,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 530,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 531,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 532,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
@@ -545,14 +496,12 @@ question_id,category,difficulty,question,expected_sql,tables_required
 544,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 545,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
 546,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
-547,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 548,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 549,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 550,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 551,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 552,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 553,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
-554,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 555,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 556,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 557,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
@@ -601,7 +550,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 600,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 601,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 602,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
-603,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 604,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 605,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 606,aggregation,easy,What is the average product price for brand Lunato?,SELECT AVG(price) FROM products WHERE brand = 'Lunato';,{products}
@@ -613,7 +561,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 612,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 613,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 614,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
-615,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 616,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
 617,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 618,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
@@ -630,7 +577,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 629,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 630,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 631,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
-632,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 633,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 837,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 634,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
@@ -672,19 +618,16 @@ question_id,category,difficulty,question,expected_sql,tables_required
 670,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 671,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
 672,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
-673,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 674,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 675,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 676,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
 677,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 678,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 679,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
-680,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 681,filtering,easy,How many products are in category eyeglasses?,SELECT COUNT(*) FROM products WHERE category = 'eyeglasses';,{products}
 682,aggregation,easy,What is the average product price for brand Prada?,SELECT AVG(price) FROM products WHERE brand = 'Prada';,{products}
 683,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 684,filtering,easy,How many products are in category eyeglasses?,SELECT COUNT(*) FROM products WHERE category = 'eyeglasses';,{products}
-685,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 686,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 687,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 688,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
@@ -738,7 +681,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 736,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 737,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 738,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
-739,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 740,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 741,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 742,filtering,easy,How many products are in category reading_glasses?,SELECT COUNT(*) FROM products WHERE category = 'reading_glasses';,{products}
@@ -757,7 +699,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 755,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 756,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 757,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
-758,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 759,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
 760,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 761,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
@@ -765,7 +706,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 763,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 764,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
 765,aggregation,easy,What is the average product price for brand Lunato?,SELECT AVG(price) FROM products WHERE brand = 'Lunato';,{products}
-766,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 838,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 767,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 768,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
@@ -779,7 +719,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 776,filtering,easy,How many products are in category eyeglasses?,SELECT COUNT(*) FROM products WHERE category = 'eyeglasses';,{products}
 777,filtering,easy,How many products are in category reading_glasses?,SELECT COUNT(*) FROM products WHERE category = 'reading_glasses';,{products}
 778,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
-779,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 780,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 781,aggregation,easy,What is the average product price for brand Prada?,SELECT AVG(price) FROM products WHERE brand = 'Prada';,{products}
 782,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
@@ -790,11 +729,9 @@ question_id,category,difficulty,question,expected_sql,tables_required
 787,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 788,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 789,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
-790,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 791,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 792,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 793,filtering,easy,How many products are in category blue_light?,SELECT COUNT(*) FROM products WHERE category = 'blue_light';,{products}
-794,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 795,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 796,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 797,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
@@ -816,7 +753,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 813,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 814,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 815,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
-816,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 817,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 818,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 819,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
@@ -826,7 +762,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 823,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 824,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 825,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
-826,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 827,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 828,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 829,customer_analytics,medium,Which cities have the most customers?,"SELECT city,COUNT(*) FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 10;",{customers}
@@ -835,7 +770,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 832,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 833,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 834,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
-835,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 836,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 839,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 840,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
@@ -896,7 +830,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 895,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
 896,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 897,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
-898,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 899,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 900,aggregation,easy,What is the average product price for brand Prada?,SELECT AVG(price) FROM products WHERE brand = 'Prada';,{products}
 901,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
@@ -921,7 +854,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 920,aggregation,easy,What is the average product price for brand Ray-Ban?,SELECT AVG(price) FROM products WHERE brand = 'Ray-Ban';,{products}
 921,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 922,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
-923,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 924,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 925,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 926,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
@@ -936,7 +868,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 935,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 936,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 937,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
-938,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 939,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 940,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
 941,aggregation,easy,What is the average product price for brand Persol?,SELECT AVG(price) FROM products WHERE brand = 'Persol';,{products}
@@ -951,7 +882,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 950,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 951,behavior,hard,Which products receive the most views?,"SELECT product_id,COUNT(*) FROM customer_events WHERE event_type='view_product' GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 20;",{customer_events}
 952,filtering,easy,How many products are in category reading_glasses?,SELECT COUNT(*) FROM products WHERE category = 'reading_glasses';,{products}
-953,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 954,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 955,basic,easy,How many customers are in the database?,SELECT COUNT(*) FROM customers;,{customers}
 956,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
@@ -964,12 +894,9 @@ question_id,category,difficulty,question,expected_sql,tables_required
 963,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
 964,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
 965,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
-966,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 967,reviews,medium,What is average rating by product category?,"SELECT p.category,AVG(r.rating) FROM reviews r JOIN products p ON p.product_id=r.product_id GROUP BY p.category;","{reviews,products}"
-968,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 969,customer_analytics,medium,Which customer segments have the highest average order value?,"SELECT c.segment,AVG(o.total_amount) FROM orders o JOIN customers c ON c.customer_id=o.customer_id GROUP BY c.segment;","{orders,customers}"
 970,joins,medium,Which products sold the most units?,"SELECT p.product_id,p.product_name,SUM(oi.quantity) AS units FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.product_id,p.product_name ORDER BY units DESC LIMIT 10;","{order_items,products}"
-971,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 972,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 973,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
 974,behavior,medium,What are the most common customer event types?,"SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",{customer_events}
@@ -978,7 +905,6 @@ question_id,category,difficulty,question,expected_sql,tables_required
 977,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
 978,inventory,medium,Which variants have the highest stock?,"SELECT variant_id,stock_quantity FROM product_variants ORDER BY stock_quantity DESC LIMIT 20;",{product_variants}
 979,aggregation,medium,What is the total revenue from delivered orders?,SELECT SUM(total_amount) FROM orders WHERE status='delivered';,{orders}
-980,basic,easy,How many products are available?,SELECT COUNT(*) FROM products;,{products}
 981,aggregation,easy,What is the average product price for brand Ray-Ban?,SELECT AVG(price) FROM products WHERE brand = 'Ray-Ban';,{products}
 982,time_series,medium,How many orders were placed per month?,"SELECT DATE_TRUNC('month',order_date),COUNT(*) FROM orders GROUP BY 1 ORDER BY 1;",{orders}
 983,complex,hard,What is revenue by product category?,"SELECT p.category,SUM(oi.quantity*(oi.unit_price-oi.discount_amount)) FROM order_items oi JOIN products p ON p.product_id=oi.product_id GROUP BY p.category;","{order_items,products}"
