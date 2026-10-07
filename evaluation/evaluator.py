@@ -1,205 +1,165 @@
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
-from typing import Any, Mapping, Protocol, Sequence
+from pathlib import Path
+from time import perf_counter
+from typing import Any, Mapping, Sequence
+
+import sqlglot
+
+from orchestration import AgentRequest, SQLAgent, WorkflowResult, WorkflowStatus
+from sql import DatabaseExecutor
 
 
-class TextToSQLAgent(Protocol):
-    """
-    Interface required from the production Text-to-SQL agent.
-    """
-
-    def run(self, question: str) -> Any:
-        """
-        Run one natural-language question through the agent.
-        """
-        ...
-
-
-class SQLExecutor(Protocol):
-    """
-    Interface required for benchmark SQL execution.
-    """
-
-    def execute(self, sql: str, parameters: Mapping[str, Any]) -> Any:
-        """
-        Execute one read-only SQL query.
-        """
-        ...
+@dataclass(frozen=True, slots=True)
+class BenchmarkQuestion:
+    question_id: str
+    category: str
+    difficulty: str
+    question: str
+    expected_sql: str
+    tables_required: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class EvaluationResult:
-    """
-    Evaluation result for one benchmark question.
-    """
-
-    question_id: int
+    question_id: str
     category: str
     difficulty: str
-
-    question: str
-    expected_sql: str
-    generated_sql: str | None
-
-    sql_exact_match: bool
-    execution_match: bool
-
     generation_success: bool
     execution_success: bool
-
-    execution_ms: float | None
-
-    error_type: str | None
-    error_message: str | None
+    exact_sql_match: bool
+    execution_result_match: bool | None
+    latency_ms: float
+    status: str
+    generated_sql: str | None
+    expected_sql: str
+    error: str | None = None
 
 
 class BenchmarkEvaluator:
-    """
-    Evaluates generated SQL against benchmark expectations.
-    """
+    """Evaluate the production agent against a CSV benchmark."""
 
-    def __init__(self, agent: TextToSQLAgent, executor: SQLExecutor) -> None:
-        self._agent: TextToSQLAgent = agent
-        self._executor: SQLExecutor = executor
+    def __init__(self, *, agent: SQLAgent, database_executor: DatabaseExecutor) -> None:
+        self._agent: SQLAgent = agent
+        self._database: DatabaseExecutor = database_executor
 
-    def evaluate(self, question_id: int, category: str, difficulty: str, question: str,
-                 expected_sql: str, ) -> EvaluationResult:
-        """
-        Evaluate one benchmark question.
-        """
-
-        try:
-            agent_result: Any = self._agent.run(question)
-            generated_sql_value: Any = getattr(agent_result, "sql", None)
-            generated_sql: str | None = (str(generated_sql_value) if generated_sql_value is not None else None)
-
-            if not generated_sql:
-                return EvaluationResult(
-                    question_id=question_id,
-                    category=category,
-                    difficulty=difficulty,
-                    question=question,
-                    expected_sql=expected_sql,
-                    generated_sql=None,
-                    sql_exact_match=False,
-                    execution_match=False,
-                    generation_success=False,
-                    execution_success=False,
-                    execution_ms=None,
-                    error_type="generation_error",
-                    error_message="Agent did not generate SQL.",
+    @staticmethod
+    def load_csv(path: str | Path) -> list[BenchmarkQuestion]:
+        rows: list[BenchmarkQuestion] = []
+        with Path(path).open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            for raw in reader:
+                rows.append(
+                    BenchmarkQuestion(
+                        question_id=str(raw["question_id"]),
+                        category=str(raw["category"]),
+                        difficulty=str(raw["difficulty"]),
+                        question=str(raw["question"]),
+                        expected_sql=str(raw["expected_sql"]),
+                        tables_required=tuple(BenchmarkEvaluator._parse_tables(raw.get("tables_required", ""))),
+                    )
                 )
+        return rows
 
-            parameters_value: Any = getattr(agent_result, "parameters", {})
-            parameters: Mapping[str, Any] = parameters_value if isinstance(parameters_value, Mapping) else {}
-            sql_exact_match: bool = self._compare_sql(generated_sql, expected_sql)
-            expected_execution: Any = self._executor.execute(expected_sql, {})
-            generated_execution: Any = self._executor.execute(generated_sql, parameters)
-            expected_success: bool = self._execution_success(expected_execution)
-            generated_success: bool = self._execution_success(generated_execution)
-            execution_match: bool = False
+    def evaluate(self, item: BenchmarkQuestion) -> EvaluationResult:
+        started_at: float = perf_counter()
+        try:
+            workflow: WorkflowResult = self._agent.run(AgentRequest(question=item.question))
+            latency_ms: float = (perf_counter() - started_at) * 1000.0
+            generation_success: bool = workflow.sql is not None and workflow.status not in {
+                WorkflowStatus.SQL_GENERATION_CLARIFICATION,
+                WorkflowStatus.CLARIFICATION_REQUIRED,
+                WorkflowStatus.UNSUPPORTED,
+            }
+            execution_success: bool = workflow.status in {WorkflowStatus.ANSWERED, WorkflowStatus.REFLECTION_REJECTED}
+            exact_match: bool = self._sql_equal(workflow.sql, item.expected_sql) if workflow.sql else False
 
-            if expected_success and generated_success:
-                expected_rows: Sequence[Any] = self._extract_rows(expected_execution)
-                generated_rows: Sequence[Any] = self._extract_rows(generated_execution)
-                execution_match = self._compare_results(generated_rows, expected_rows)
-
-            execution_ms: float | None = self._extract_execution_ms(generated_execution)
+            result_match: bool | None = None
+            error: str | None = None
+            if generation_success and workflow.sql is not None and execution_success:
+                generated_execution = self._database.execute(workflow.sql, workflow.parameters)
+                expected_execution = self._database.execute(item.expected_sql, {})
+                if generated_execution.success and expected_execution.success:
+                    result_match = self._rows_equal(
+                        generated_execution.rows,
+                        expected_execution.rows,
+                        order_sensitive=self._has_ordering(item.expected_sql),
+                    )
+                else:
+                    error = (
+                        generated_execution.error_message
+                        or expected_execution.error_message
+                        or "Reference or generated SQL execution failed during evaluation."
+                    )
 
             return EvaluationResult(
-                question_id=question_id,
-                category=category,
-                difficulty=difficulty,
-                question=question,
-                expected_sql=expected_sql,
-                generated_sql=generated_sql,
-                sql_exact_match=sql_exact_match,
-                execution_match=execution_match,
-                generation_success=True,
-                execution_success=generated_success,
-                execution_ms=execution_ms,
-                error_type=self._extract_error_type(generated_execution),
-                error_message=self._extract_error_message(generated_execution)
+                question_id=item.question_id,
+                category=item.category,
+                difficulty=item.difficulty,
+                generation_success=generation_success,
+                execution_success=execution_success,
+                exact_sql_match=exact_match,
+                execution_result_match=result_match,
+                latency_ms=latency_ms,
+                status=workflow.status.value,
+                generated_sql=workflow.sql,
+                expected_sql=item.expected_sql,
+                error=error or (workflow.issues[0] if workflow.issues else None),
             )
-
         except Exception as exc:
+            latency_ms = (perf_counter() - started_at) * 1000.0
             return EvaluationResult(
-                question_id=question_id,
-                category=category,
-                difficulty=difficulty,
-                question=question,
-                expected_sql=expected_sql,
-                generated_sql=None,
-                sql_exact_match=False,
-                execution_match=False,
+                question_id=item.question_id,
+                category=item.category,
+                difficulty=item.difficulty,
                 generation_success=False,
                 execution_success=False,
-                execution_ms=None,
-                error_type=type(exc).__name__,
-                error_message=str(exc),
+                exact_sql_match=False,
+                execution_result_match=None,
+                latency_ms=latency_ms,
+                status="evaluator_error",
+                generated_sql=None,
+                expected_sql=item.expected_sql,
+                error=f"{type(exc).__name__}: {exc}",
             )
 
     @staticmethod
-    def _compare_sql(generated_sql: str, expected_sql: str) -> bool:
-        """
-        Compare SQL after basic normalization.
-        """
-        generated_normalized: str = (" ".join(generated_sql.strip().split()).rstrip(";").lower())
-        expected_normalized: str = (" ".join(expected_sql.strip().split()).rstrip(";").lower())
-        return generated_normalized == expected_normalized
+    def _sql_equal(left: str | None, right: str) -> bool:
+        if left is None:
+            return False
+        try:
+            left_sql: str = sqlglot.parse_one(left, read="postgres").sql(dialect="postgres")
+            right_sql: str = sqlglot.parse_one(right, read="postgres").sql(dialect="postgres")
+            return left_sql.strip() == right_sql.strip()
+        except Exception:
+            return " ".join(left.split()).lower() == " ".join(right.split()).lower()
 
     @staticmethod
-    def _compare_results(generated_rows: Sequence[Any], expected_rows: Sequence[Any]) -> bool:
-        """
-        Compare result sets without depending on row ordering.
-        """
-        generated_normalized: list[str] = sorted(repr(row) for row in generated_rows)
-        expected_normalized: list[str] = sorted(repr(row) for row in expected_rows)
-
-        return generated_normalized == expected_normalized
-
-    @staticmethod
-    def _execution_success(execution_result: Any) -> bool:
-        """
-        Extract execution success status.
-        """
-        value: Any = getattr(execution_result, "success", False)
-        return bool(value)
+    def _rows_equal(
+        left: Sequence[Mapping[str, Any]],
+        right: Sequence[Mapping[str, Any]],
+        *,
+        order_sensitive: bool,
+    ) -> bool:
+        if order_sensitive:
+            return [dict(row) for row in left] == [dict(row) for row in right]
+        return sorted((tuple(sorted(row.items())) for row in left), key=repr) == sorted(
+            (tuple(sorted(row.items())) for row in right), key=repr
+        )
 
     @staticmethod
-    def _extract_rows(execution_result: Any) -> Sequence[Any]:
-        """
-        Extract rows from an execution result.
-        """
-        rows: Any = getattr(execution_result, "rows", ())
-
-        if isinstance(rows, Sequence):
-            return rows
-        return ()
+    def _has_ordering(sql: str) -> bool:
+        try:
+            parsed = sqlglot.parse_one(sql, read="postgres")
+            return bool(parsed.args.get("order"))
+        except Exception:
+            return False
 
     @staticmethod
-    def _extract_execution_ms(execution_result: Any) -> float | None:
-        """
-        Extract execution latency.
-        """
-        value: Any = getattr(execution_result, "execution_ms", None)
-        if value is None:
-            return None
-        return float(value)
-
-    @staticmethod
-    def _extract_error_type(execution_result: Any) -> str | None:
-        """
-        Extract execution error type.
-        """
-        value: Any = getattr(execution_result, "error_type", None)
-        return str(value) if value is not None else None
-
-    @staticmethod
-    def _extract_error_message(execution_result: Any) -> str | None:
-        """
-        Extract execution error message.
-        """
-        value: Any = getattr(execution_result, "error_message", None)
-        return str(value) if value is not None else None
+    def _parse_tables(value: str) -> list[str]:
+        normalized: str = value.strip().strip("{}").strip()
+        if not normalized:
+            return []
+        return [item.strip() for item in normalized.split(",") if item.strip()]

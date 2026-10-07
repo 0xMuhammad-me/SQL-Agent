@@ -1,12 +1,12 @@
-from __future__ import annotations
-
 from .benchmark_runner import BenchmarkRunner
-from .evaluator import BenchmarkEvaluator, EvaluationResult
-from .metrics import EvaluationMetrics
+from .evaluator import BenchmarkEvaluator, BenchmarkQuestion, EvaluationResult
+from .metrics import calculate_metrics, results_to_dicts
 
-__all__: list[str] = [
+__all__ = [
     "BenchmarkEvaluator",
+    "BenchmarkQuestion",
     "BenchmarkRunner",
-    "EvaluationMetrics",
     "EvaluationResult",
+    "calculate_metrics",
+    "results_to_dicts",
 ]

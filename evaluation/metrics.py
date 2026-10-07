@@ -1,71 +1,48 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from statistics import mean
-from typing import Sequence
+from collections import defaultdict
+from dataclasses import asdict
+from typing import Any, Iterable
 
 from .evaluator import EvaluationResult
 
 
-@dataclass(frozen=True, slots=True)
-class EvaluationMetrics:
-    """
-    Aggregate metrics for a benchmark run.
-    """
+def calculate_metrics(results: Iterable[EvaluationResult]) -> dict[str, Any]:
+    items: list[EvaluationResult] = list(results)
+    total: int = len(items)
+    execution_matches: list[bool] = [item.execution_result_match for item in items if item.execution_result_match is not None]
 
-    total_questions: int
+    report: dict[str, Any] = {
+        "total_questions": total,
+        "generation_success_rate": _rate(sum(item.generation_success for item in items), total),
+        "execution_success_rate": _rate(sum(item.execution_success for item in items), total),
+        "exact_sql_match_rate": _rate(sum(item.exact_sql_match for item in items), total),
+        "execution_result_match_rate": _rate(sum(execution_matches), len(execution_matches)) if execution_matches else None,
+        "average_latency_ms": sum(item.latency_ms for item in items) / total if total else 0.0,
+        "status_counts": _counts(item.status for item in items),
+        "by_category": _breakdown(items, lambda item: item.category),
+        "by_difficulty": _breakdown(items, lambda item: item.difficulty),
+    }
+    return report
 
-    generation_success_rate: float
-    execution_success_rate: float
 
-    sql_exact_match_rate: float
-    execution_accuracy: float
-
-    average_execution_ms: float
-    failure_rate: float
+def results_to_dicts(results: Iterable[EvaluationResult]) -> list[dict[str, Any]]:
+    return [asdict(item) for item in results]
 
 
-class MetricsCalculator:
-    """
-    Calculates benchmark metrics.
-    """
+def _breakdown(items: list[EvaluationResult], key_fn: Any) -> dict[str, Any]:
+    groups: dict[str, list[EvaluationResult]] = defaultdict(list)
+    for item in items:
+        groups[str(key_fn(item))].append(item)
+    return {key: calculate_metrics(group) for key, group in sorted(groups.items())}
 
-    def calculate(self, results: Sequence[EvaluationResult]) -> EvaluationMetrics:
-        """
-        Calculate aggregate benchmark metrics.
-        """
-        total_questions: int = len(results)
-        if total_questions == 0:
-            return EvaluationMetrics(
-                total_questions=0,
-                generation_success_rate=0.0,
-                execution_success_rate=0.0,
-                sql_exact_match_rate=0.0,
-                execution_accuracy=0.0,
-                average_execution_ms=0.0,
-                failure_rate=0.0,
-            )
 
-        generation_success_count: int = sum(result.generation_success for result in results)
-        execution_success_count: int = sum(result.execution_success for result in results)
-        sql_exact_match_count: int = sum(result.sql_exact_match for result in results)
-        execution_match_count: int = sum(result.execution_match for result in results)
-        failures_count: int = sum(not result.execution_success for result in results)
+def _counts(values: Iterable[str]) -> dict[str, int]:
+    counts: dict[str, int] = defaultdict(int)
+    for value in values:
+        counts[value] += 1
+    return dict(sorted(counts.items()))
 
-        execution_times: list[float] = [
-            result.execution_ms
-            for result in results
-            if result.execution_ms is not None
-        ]
 
-        average_execution_ms: float = mean(execution_times) if execution_times else 0.0
-
-        return EvaluationMetrics(
-            total_questions=total_questions,
-            generation_success_rate=(generation_success_count / total_questions),
-            execution_success_rate=(execution_success_count / total_questions),
-            sql_exact_match_rate=(sql_exact_match_count / total_questions),
-            execution_accuracy=(execution_match_count / total_questions),
-            average_execution_ms=average_execution_ms,
-            failure_rate=(failures_count / total_questions)
-        )
+def _rate(numerator: int, denominator: int) -> float:
+    return numerator / denominator if denominator else 0.0
