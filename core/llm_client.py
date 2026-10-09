@@ -3,9 +3,11 @@ import json
 from dataclasses import dataclass
 from typing import Any, Callable, Generic, Mapping, Sequence, TypeVar, cast
 from openai import APIConnectionError, APIError, APITimeoutError, OpenAI, RateLimitError as OpenAIRateLimitError
-from openai.types.responses import (
-    FunctionToolParam,
-    ResponseInputItemParam,
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionMessageParam,
+    ChatCompletionToolMessageParam,
+    ChatCompletionToolUnionParam, ChatCompletionFunctionToolParam, ChatCompletionMessageFunctionToolCallParam,
 )
 from config.settings import LLM_CONFIG
 from errors import ExternalTimeoutError, LLMError, NetworkError, RateLimitError
@@ -69,7 +71,7 @@ class LLMClient:
             system_prompt: str,
             user_prompt: str,
             response_model: type[T],
-            tools: Sequence[Mapping[str, Any]],
+            tools: Sequence[ChatCompletionToolUnionParam],
             tool_executor: ToolExecutor,
             model: str | None = None,
             max_tool_calls: int = 1,
@@ -90,7 +92,7 @@ class ProviderClient(LLMClient):
         key: str = api_key or LLM_CONFIG.api_key
         if not key:
             raise ValueError("PROVIDER_API_KEY is not configured.")
-        self.client: OpenAI = OpenAI(api_key=key, base_url="https://api.avalai.ir/v1")
+        self.client: OpenAI = OpenAI(api_key=key, base_url=LLM_CONFIG.base_url)
         self.default_model: str = default_model or LLM_CONFIG.model
         self.timeout_seconds: float = (
             timeout_seconds if timeout_seconds is not None else LLM_CONFIG.timeout_seconds
@@ -138,7 +140,7 @@ class ProviderClient(LLMClient):
             system_prompt: str,
             user_prompt: str,
             response_model: type[T],
-            tools: Sequence[Mapping[str, Any]],
+            tools: Sequence[ChatCompletionToolUnionParam],
             tool_executor: ToolExecutor,
             model: str | None = None,
             max_tool_calls: int = 1,
@@ -166,13 +168,24 @@ class ProviderClient(LLMClient):
             model: str,
     ) -> LLMResponse[str]:
         try:
-            response: Any = self.client.responses.create(
+            messages: list[ChatCompletionMessageParam] = [
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt,
+                },
+            ]
+            response: Any = self.client.chat.completions.create(
                 model=model,
-                instructions=system_prompt,
-                input=user_prompt,
+                messages=messages,
                 timeout=self.timeout_seconds,
             )
-            output: str = str(response.output_text or "").strip()
+
+            output: str = (response.choices[0].message.content or "").strip()
+
             if not output:
                 raise LLMError("LLM returned empty text.", details={"model": model})
             return LLMResponse(
@@ -215,19 +228,39 @@ class ProviderClient(LLMClient):
             model: str,
     ) -> LLMResponse[T]:
         try:
-            response: Any = self.client.responses.parse(
+            schema_json: str = json.dumps(response_model.model_json_schema(), ensure_ascii=False)
+            structured_prompt: str = (
+                f"{user_prompt}\n\n"
+                "Return only valid JSON matching this schema:\n"
+                f"{schema_json}"
+            )
+
+            messages: list[ChatCompletionMessageParam] = [
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": structured_prompt,
+                },
+            ]
+
+            response: Any = self.client.chat.completions.create(
                 model=model,
-                instructions=system_prompt,
-                input=user_prompt,
-                text_format=response_model,
+                messages=messages,
+                response_format={"type": "json_object"},
                 timeout=self.timeout_seconds,
             )
-            output: T | None = getattr(response, "output_parsed", None)
-            if output is None:
-                raise LLMError(
-                    "LLM did not return a parsed structured response.",
-                    details={"model": model},
-                )
+
+            output: str | None = response.choices[0].message.content
+
+            if not output:
+                raise LLMError("LLM did not return structured content.", details={"model": model})
+
+            parsed_data: Any = json.loads(output)
+
+            output: T = response_model.model_validate(parsed_data)
             return LLMResponse(
                 output=output,
                 model_name=model,
@@ -265,164 +298,217 @@ class ProviderClient(LLMClient):
             system_prompt: str,
             user_prompt: str,
             response_model: type[T],
-            tools: Sequence[Mapping[str, Any]],
+            tools: Sequence[ChatCompletionToolUnionParam],
             tool_executor: ToolExecutor,
             model: str,
             max_tool_calls: int,
     ) -> LLMResponse[T]:
         try:
-            first_response: Any = self.client.responses.parse(
-                model=model,
-                instructions=system_prompt,
-                input=user_prompt,
-                text_format=response_model,
-                tools=list(tools),
-                tool_choice="auto",
-                max_tool_calls=max_tool_calls,
-                parallel_tool_calls=False,
-                timeout=self.timeout_seconds,
-            )
-
-            function_calls: list[Any] = [
-                item
-                for item in (first_response.output or [])
-                if getattr(item, "type", None) == "function_call"
+            messages: list[ChatCompletionMessageParam] = [
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt,
+                },
             ]
 
-            if not function_calls:
-                output: T | None = getattr(first_response, "output_parsed", None)
+            tools_payload: list[ChatCompletionToolUnionParam] = [
+                cast(ChatCompletionFunctionToolParam, dict(tool))
+                for tool in tools
+            ]
 
-                if output is None:
+            first_response: Any = (
+                self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=tools_payload,
+                    tool_choice="auto",
+                    parallel_tool_calls=False,
+                    timeout=self.timeout_seconds,
+                )
+            )
+
+            message: Any = first_response.choices[0].message
+
+            tool_calls: list[Any] = list(
+                getattr(message, "tool_calls", None) or []
+            )
+
+            # ----------------------------------------------------------
+            # No tool call -> parse structured response
+            # ----------------------------------------------------------
+
+            if not tool_calls:
+                content: str | None = message.content
+
+                if not content:
                     raise LLMError(
                         "LLM did not return a structured result.",
                         details={"model": model},
                     )
 
+                output: T = response_model.model_validate_json(
+                    content
+                )
+
                 return LLMResponse(
                     output=output,
                     model_name=model,
-                    response_id=getattr(first_response, "id", None),
+                    response_id=getattr(
+                        first_response,
+                        "id",
+                        None,
+                    ),
                     usage=self._usage(first_response),
                 )
 
-            if len(function_calls) > max_tool_calls:
+            # ----------------------------------------------------------
+            # Validate number of tool calls
+            # ----------------------------------------------------------
+
+            if len(tool_calls) > max_tool_calls:
                 raise LLMError(
                     "LLM exceeded the allowed tool-call limit.",
                     details={
                         "model": model,
                         "max_tool_calls": max_tool_calls,
-                        "actual_tool_calls": len(function_calls),
+                        "actual_tool_calls": len(tool_calls),
                     },
                 )
 
-            if len(function_calls) != 1:
+            if len(tool_calls) != 1:
                 raise LLMError(
                     "QuerySpec agent must issue exactly one metadata tool call.",
                     details={
                         "model": model,
-                        "actual_tool_calls": len(function_calls),
+                        "actual_tool_calls": len(tool_calls),
                     },
                 )
 
-            function_call: Any = function_calls[0]
-            tool_name: str = str(function_call.name)
-            tool_arguments: dict[str, Any] = json.loads(
-                str(function_call.arguments)
-            )
+            tool_call: Any = tool_calls[0]
+            tool_name: str = str(tool_call.function.name)
+            tool_arguments: dict[str, Any] = json.loads(str(tool_call.function.arguments))
 
-            tool_output: Any = tool_executor(
-                tool_name,
-                tool_arguments,
-            )
+            # ----------------------------------------------------------
+            # Execute tool
+            # ----------------------------------------------------------
 
-            function_call_output: FunctionCallOutput = {
-                "type": "function_call_output",
-                "call_id": function_call.call_id,
-                "output": json.dumps(
-                    tool_output,
-                    ensure_ascii=False,
-                    default=str,
-                ),
+            tool_output: Any = tool_executor(tool_name, tool_arguments)
+
+            # ----------------------------------------------------------
+            # Continue conversation with tool result
+            # ----------------------------------------------------------
+
+            tool_calls_payload: list[ChatCompletionMessageFunctionToolCallParam] = []
+
+            for tool_call in tool_calls:
+                payload: dict[str, Any] = tool_call.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                )
+
+                if "extra_content" not in payload:
+                    extra_content: Any = getattr(
+                        tool_call,
+                        "extra_content",
+                        None,
+                    )
+
+                    if extra_content is None:
+                        model_extra: Mapping[str, Any] = (
+                                getattr(tool_call, "model_extra", None) or {}
+                        )
+                        extra_content = model_extra.get("extra_content")
+
+                    if extra_content is not None:
+                        payload["extra_content"] = extra_content
+
+                tool_calls_payload.append(cast(ChatCompletionMessageFunctionToolCallParam, payload))
+
+            assistant_message: ChatCompletionAssistantMessageParam = {
+                "role": "assistant",
+                "content": message.content,
+                "tool_calls": tool_calls_payload,
             }
 
-            continuation_input: ResponseInputItemParam = cast(
-                ResponseInputItemParam,
-                function_call_output,
-            )
-            second_response: Any = self.client.responses.parse(
-                model=model,
-                instructions=system_prompt,
-                previous_response_id=first_response.id,
-                input=[continuation_input],
-                text_format=response_model,
-                timeout=self.timeout_seconds,
+            messages.append(assistant_message)
+
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": json.dumps(
+                        tool_output,
+                        ensure_ascii=False,
+                        default=str,
+                    ),
+                }
             )
 
-            unexpected_tool_calls: list[Any] = [
-                item
-                for item in (second_response.output or [])
-                if getattr(item, "type", None) == "function_call"
-            ]
+            # ----------------------------------------------------------
+            # Second request -> structured final response
+            # ----------------------------------------------------------
+
+            second_response: Any = (
+                self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    response_format={
+                        "type": "json_object"
+                    },
+                    timeout=self.timeout_seconds,
+                )
+            )
+
+            second_message: Any = second_response.choices[0].message
+            unexpected_tool_calls: list[Any] = list(getattr(second_message, "tool_calls", None) or [])
 
             if unexpected_tool_calls:
-                raise LLMError(
-                    "QuerySpec agent attempted more than one tool call.",
-                    details={"model": model},
-                )
+                raise LLMError("QuerySpec agent attempted more than one tool call.", details={"model": model}, )
 
-            output = getattr(second_response, "output_parsed", None)
+            content: str | None = second_message.content
 
-            if output is None:
-                raise LLMError(
-                    "LLM did not return a final structured QuerySpec.",
-                    details={"model": model},
-                )
+            if not content:
+                raise LLMError("LLM did not return a final structured QuerySpec.", details={"model": model})
+
+            output: T = response_model.model_validate_json(content)
 
             first_usage: LLMUsage = self._usage(first_response)
             second_usage: LLMUsage = self._usage(second_response)
 
             total_usage: LLMUsage = LLMUsage(
-                input_tokens=first_usage.input_tokens + second_usage.input_tokens,
-                output_tokens=first_usage.output_tokens + second_usage.output_tokens,
-                total_tokens=first_usage.total_tokens + second_usage.total_tokens,
+                input_tokens=(first_usage.input_tokens + second_usage.input_tokens),
+                output_tokens=(first_usage.output_tokens + second_usage.output_tokens),
+                total_tokens=(first_usage.total_tokens + second_usage.total_tokens),
             )
 
             return LLMResponse(
                 output=output,
                 model_name=model,
-                response_id=getattr(second_response, "id", None),
+                response_id=getattr(second_response, "id", None, ),
                 usage=total_usage,
             )
 
         except OpenAIRateLimitError as exc:
-            raise RateLimitError(
-                "LLM rate limit was reached.",
-                cause=exc,
-                details={"model": model},
-            ) from exc
+            raise RateLimitError("LLM rate limit was reached.", cause=exc, details={"model": model},
+                                 ) from exc
 
         except APITimeoutError as exc:
-            raise ExternalTimeoutError(
-                "LLM request timed out.",
-                cause=exc,
-                details={"model": model},
-            ) from exc
+            raise ExternalTimeoutError("LLM request timed out.", cause=exc, details={"model": model},
+                                       ) from exc
 
         except APIConnectionError as exc:
-            raise NetworkError(
-                "Connection to LLM provider failed.",
-                cause=exc,
-                details={"model": model},
-            ) from exc
+            raise NetworkError("Connection to LLM provider failed.", cause=exc, details={"model": model},
+                               ) from exc
 
         except APIError as exc:
             raise LLMError(
                 "LLM provider returned an API error.",
                 cause=exc,
-                details={
-                    "model": model,
-                    "status_code": getattr(exc, "status_code", None),
-                },
+                details={"model": model, "status_code": getattr(exc, "status_code", None)},
             ) from exc
 
     @staticmethod
