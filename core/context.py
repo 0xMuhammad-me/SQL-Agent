@@ -5,10 +5,10 @@ from typing import Any
 
 @dataclass(slots=True)
 class AgentContext:
-    trace_id: str;
-    user_query: str;
-    user_id: str | None = None;
-    metadata: dict[str, Any] = field(default_factory=dict);
+    trace_id: str
+    user_query: str
+    user_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     state: dict[str, Any] = field(default_factory=dict)
 
     def set(self, key: str, value: Any) -> None: self.state[key] = value
