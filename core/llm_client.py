@@ -345,23 +345,14 @@ class ProviderClient(LLMClient):
                 content: str | None = message.content
 
                 if not content:
-                    raise LLMError(
-                        "LLM did not return a structured result.",
-                        details={"model": model},
-                    )
+                    raise LLMError("LLM did not return a structured result.", details={"model": model})
 
-                output: T = response_model.model_validate_json(
-                    content
-                )
+                output: T = response_model.model_validate_json(content)
 
                 return LLMResponse(
                     output=output,
                     model_name=model,
-                    response_id=getattr(
-                        first_response,
-                        "id",
-                        None,
-                    ),
+                    response_id=getattr(first_response,"id",None),
                     usage=self._usage(first_response),
                 )
 
@@ -514,9 +505,30 @@ class ProviderClient(LLMClient):
     @staticmethod
     def _usage(response: Any) -> LLMUsage:
         usage: Any = getattr(response, "usage", None)
+
         if usage is None:
             return LLMUsage()
-        input_tokens: int = int(getattr(usage, "input_tokens", 0) or 0)
-        output_tokens: int = int(getattr(usage, "output_tokens", 0) or 0)
-        total_tokens: int = int(getattr(usage, "total_tokens", input_tokens + output_tokens) or 0)
-        return LLMUsage(input_tokens, output_tokens, total_tokens)
+
+        def read_count(*names: str) -> int:
+            for name in names:
+                if isinstance(usage, dict):
+                    value = usage.get(name)
+                else:
+                    value = getattr(usage, name, None)
+
+                if value is not None:
+                    try:
+                        return int(value or 0)
+                    except (TypeError, ValueError):
+                        continue
+
+            return 0
+
+        input_tokens = read_count("input_tokens", "prompt_tokens", "input_token_count")
+        output_tokens = read_count("output_tokens", "completion_tokens", "output_token_count")
+        total_tokens = read_count("total_tokens", "total_token_count")
+
+        if total_tokens == 0:
+            total_tokens = input_tokens + output_tokens
+
+        return LLMUsage(input_tokens=input_tokens, output_tokens=output_tokens, total_tokens=total_tokens)
