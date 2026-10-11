@@ -1,0 +1,281 @@
+{
+  "recovery": {
+    "mode": "live_benchmark_execution",
+    "dataset_path": "evaluation/benchmark_questions.csv",
+    "log_path": null,
+    "dataset_questions": 3,
+    "log_requests": null,
+    "recovered_questions": 3,
+    "unrecovered_questions": 0,
+    "complete": true,
+    "matching_method": "Questions are evaluated directly from the dataset. Reference and generated SQL results are compared for each question; historical log matching is not used.",
+    "warning": "This report comes from live benchmark execution, not recovery from existing logs."
+  },
+  "metrics": {
+    "total_questions": 3,
+    "generation_success_rate": 1.0,
+    "execution_success_rate": 1.0,
+    "result_sql_match_rate": 1.0,
+    "result_sql_match_evaluated_questions": 3,
+    "result_sql_match_unavailable_questions": 0,
+    "average_latency_ms": 16083.472944660267,
+    "status_counts": {
+      "answered": 3
+    },
+    "by_category": {
+      "basic": {
+        "total_questions": 2,
+        "generation_success_rate": 1.0,
+        "execution_success_rate": 1.0,
+        "result_sql_match_rate": 1.0,
+        "result_sql_match_evaluated_questions": 2,
+        "result_sql_match_unavailable_questions": 0,
+        "average_latency_ms": 13020.018574490678,
+        "status_counts": {
+          "answered": 2
+        }
+      },
+      "behavior": {
+        "total_questions": 1,
+        "generation_success_rate": 1.0,
+        "execution_success_rate": 1.0,
+        "result_sql_match_rate": 1.0,
+        "result_sql_match_evaluated_questions": 1,
+        "result_sql_match_unavailable_questions": 0,
+        "average_latency_ms": 22210.381684999447,
+        "status_counts": {
+          "answered": 1
+        }
+      }
+    },
+    "by_difficulty": {
+      "easy": {
+        "total_questions": 2,
+        "generation_success_rate": 1.0,
+        "execution_success_rate": 1.0,
+        "result_sql_match_rate": 1.0,
+        "result_sql_match_evaluated_questions": 2,
+        "result_sql_match_unavailable_questions": 0,
+        "average_latency_ms": 13020.018574490678,
+        "status_counts": {
+          "answered": 2
+        }
+      },
+      "medium": {
+        "total_questions": 1,
+        "generation_success_rate": 1.0,
+        "execution_success_rate": 1.0,
+        "result_sql_match_rate": 1.0,
+        "result_sql_match_evaluated_questions": 1,
+        "result_sql_match_unavailable_questions": 0,
+        "average_latency_ms": 22210.381684999447,
+        "status_counts": {
+          "answered": 1
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "question_id": "1",
+      "category": "behavior",
+      "difficulty": "medium",
+      "generation_success": true,
+      "execution_success": true,
+      "result_sql_match": true,
+      "latency_ms": 22210.381684999447,
+      "status": "answered",
+      "generated_sql": "SELECT customer_events.event_type, COUNT(customer_events.event_id) AS event_count\nFROM customer_events\nGROUP BY customer_events.event_type\nORDER BY event_count DESC",
+      "expected_sql": "SELECT event_type,COUNT(*) FROM customer_events GROUP BY event_type ORDER BY COUNT(*) DESC;",
+      "question": "What are the most common customer event types?",
+      "error": null,
+      "generated_execution": {
+        "success": true,
+        "columns": [
+          "event_type",
+          "event_count"
+        ],
+        "row_count": 8,
+        "execution_ms": 3899.919381015934,
+        "truncated": false,
+        "rows": [
+          {
+            "event_type": "view_product",
+            "event_count": 5204581
+          },
+          {
+            "event_type": "purchase",
+            "event_count": 1490580
+          },
+          {
+            "event_type": "add_to_cart",
+            "event_count": 1201948
+          },
+          {
+            "event_type": "search",
+            "event_count": 701132
+          },
+          {
+            "event_type": "wishlist_add",
+            "event_count": 501039
+          },
+          {
+            "event_type": "product_share",
+            "event_count": 400851
+          },
+          {
+            "event_type": "remove_from_cart",
+            "event_count": 300179
+          },
+          {
+            "event_type": "wishlist_remove",
+            "event_count": 199690
+          }
+        ],
+        "error_type": null,
+        "error_message": null
+      },
+      "expected_execution": {
+        "success": true,
+        "columns": [
+          "event_type",
+          "count"
+        ],
+        "row_count": 8,
+        "execution_ms": 3592.241967038717,
+        "truncated": false,
+        "rows": [
+          {
+            "event_type": "view_product",
+            "count": 5204581
+          },
+          {
+            "event_type": "purchase",
+            "count": 1490580
+          },
+          {
+            "event_type": "add_to_cart",
+            "count": 1201948
+          },
+          {
+            "event_type": "search",
+            "count": 701132
+          },
+          {
+            "event_type": "wishlist_add",
+            "count": 501039
+          },
+          {
+            "event_type": "product_share",
+            "count": 400851
+          },
+          {
+            "event_type": "remove_from_cart",
+            "count": 300179
+          },
+          {
+            "event_type": "wishlist_remove",
+            "count": 199690
+          }
+        ],
+        "error_type": null,
+        "error_message": null
+      },
+      "token_usage": {}
+    },
+    {
+      "question_id": "2",
+      "category": "basic",
+      "difficulty": "easy",
+      "generation_success": true,
+      "execution_success": true,
+      "result_sql_match": true,
+      "latency_ms": 11814.009218011051,
+      "status": "answered",
+      "generated_sql": "SELECT COUNT(DISTINCT product_variants.product_id) FROM product_variants WHERE product_variants.stock_quantity > 0",
+      "expected_sql": "SELECT COUNT(DISTINCT product_variants.product_id) FROM product_variants WHERE product_variants.stock_quantity > 0;",
+      "question": "How many products are available?",
+      "error": null,
+      "generated_execution": {
+        "success": true,
+        "columns": [
+          "count"
+        ],
+        "row_count": 1,
+        "execution_ms": 679.4276110013016,
+        "truncated": false,
+        "rows": [
+          {
+            "count": 19948
+          }
+        ],
+        "error_type": null,
+        "error_message": null
+      },
+      "expected_execution": {
+        "success": true,
+        "columns": [
+          "count"
+        ],
+        "row_count": 1,
+        "execution_ms": 599.0563020459376,
+        "truncated": false,
+        "rows": [
+          {
+            "count": 19948
+          }
+        ],
+        "error_type": null,
+        "error_message": null
+      },
+      "token_usage": {}
+    },
+    {
+      "question_id": "3",
+      "category": "basic",
+      "difficulty": "easy",
+      "generation_success": true,
+      "execution_success": true,
+      "result_sql_match": true,
+      "latency_ms": 14226.027930970304,
+      "status": "answered",
+      "generated_sql": "SELECT COUNT(customers.customer_id) FROM customers",
+      "expected_sql": "SELECT COUNT(*) FROM customers;",
+      "question": "How many customers are in the database?",
+      "error": null,
+      "generated_execution": {
+        "success": true,
+        "columns": [
+          "count"
+        ],
+        "row_count": 1,
+        "execution_ms": 639.5858339965343,
+        "truncated": false,
+        "rows": [
+          {
+            "count": 200000
+          }
+        ],
+        "error_type": null,
+        "error_message": null
+      },
+      "expected_execution": {
+        "success": true,
+        "columns": [
+          "count"
+        ],
+        "row_count": 1,
+        "execution_ms": 661.8682270054705,
+        "truncated": false,
+        "rows": [
+          {
+            "count": 200000
+          }
+        ],
+        "error_type": null,
+        "error_message": null
+      },
+      "token_usage": {}
+    }
+  ]
+}
