@@ -78,7 +78,7 @@ class BenchmarkEvaluator:
         expected_execution_details: dict[str, Any] | None = None
 
         try:
-            workflow: WorkflowResult = self._agent.run(AgentRequest(question=item.question,  metadata={"question_id": item.question_id},))
+            workflow: WorkflowResult = self._agent.run(AgentRequest(question=item.question))
             latency_ms = (perf_counter() - started_at) * 1000.0
 
             generation_success = (
