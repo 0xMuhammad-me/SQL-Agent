@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class AgentMetrics:
-    """
-    Stores aggregated system performance metrics.
-    """
+    """In-process aggregate metrics suitable for a single application instance."""
+
     total_requests: int = 0
     successful_requests: int = 0
     failed_requests: int = 0
@@ -16,10 +17,18 @@ class AgentMetrics:
     sql_execution_failures: int = 0
     reflection_failures: int = 0
 
+    def record_request(self) -> None:
+        self.total_requests += 1
+
+    def record_result(self, *, success: bool, latency_ms: float) -> None:
+        self.total_latency_ms += latency_ms
+        if success:
+            self.successful_requests += 1
+        else:
+            self.failed_requests += 1
+
     def success_rate(self) -> float:
-        """
-        Calculates overall request success rate.
-        """
-        if self.total_requests == 0:
-            return 0.0
-        return self.successful_requests / self.total_requests
+        return self.successful_requests / self.total_requests if self.total_requests else 0.0
+
+    def average_latency_ms(self) -> float:
+        return self.total_latency_ms / self.total_requests if self.total_requests else 0.0
