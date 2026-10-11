@@ -39,7 +39,7 @@ def build_sql_agent() -> SQLAgent:
     metric_memory: MetricMemory = MetricMemory()
     semantic_memory: MemoryRetriever = MemoryRetriever(schema_memory, business_memory, metric_memory)
     cache: InMemoryCache = InMemoryCache()
-    metadata_tools: MetadataTools = MetadataTools(semantic_memory, cache,         logger=logger)
+    metadata_tools: MetadataTools = MetadataTools(semantic_memory, cache)
 
     schema_index: SchemaIndex = SchemaIndex()
     sql_validator: SQLValidator = SQLValidator(schema_index)
