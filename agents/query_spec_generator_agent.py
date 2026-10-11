@@ -16,7 +16,7 @@ from prompts.query_spec_generator_prompt import (
     QUERY_SPEC_GENERATOR_SYSTEM_PROMPT,
     build_query_spec_generator_prompt,
 )
-from openai.types.responses import FunctionToolParam
+from typing import Any, Mapping, Sequence
 from .base_agent import BaseAgent, agent_lifecycle
 
 
@@ -98,32 +98,33 @@ class QuerySpecGeneratorAgent(BaseAgent[QuerySpec]):
         }
 
     @staticmethod
-    def _metadata_retrieval_tool_definition() -> FunctionToolParam:
+    def _metadata_retrieval_tool_definition() -> Mapping[str, Any]:
         """Return the only tool available to the QuerySpec agent."""
 
         return {
             "type": "function",
-            "name": "retrieve_metadata",
-            "description": (
-                "Retrieve relevant schema, relationships, business definitions, "
-                "metric definitions, and glossary entries for the draft QuerySpec. "
-                "Call this tool exactly once for query requests before returning "
-                "the final grounded QuerySpec."
-            ),
-            "strict": True,
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query_spec": {
-                        "type": "string",
-                        "description": (
-                            "JSON-encoded draft QuerySpec. "
-                            "The value must contain exactly the QuerySpec fields."
-                        ),
+            "function": {
+                "name": "retrieve_metadata",
+                "description": (
+                    "Retrieve relevant schema, relationships, business definitions, "
+                    "metric definitions, and glossary entries for the draft QuerySpec. "
+                    "Call this tool exactly once for query requests before returning "
+                    "the final grounded QuerySpec."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query_spec": {
+                            "type": "string",
+                            "description": (
+                                "JSON-encoded draft QuerySpec. "
+                                "The value must contain exactly the QuerySpec fields."
+                            ),
+                        },
                     },
+                    "required": ["query_spec"],
+                    "additionalProperties": False,
                 },
-                "required": ["query_spec"],
-                "additionalProperties": False,
             },
         }
 
