@@ -45,4 +45,3 @@ class AgentEvent:
     error_type: str | None = None
     error_message: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    question_id: str | None = None
