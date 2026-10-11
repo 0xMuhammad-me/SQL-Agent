@@ -6,8 +6,8 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from agent_schemas import QuerySpec, RequestType
-from memory import CacheStore, MemoryContext, MemoryRetriever, SchemaSearchResult
+from agent_schemas import QuerySpec
+from memory import CacheStore, MemoryContext, MemoryRetriever
 from metadata.glossary import GLOSSARY
 from metadata.relationship_catalog import RELATIONSHIPS
 
@@ -29,7 +29,7 @@ class MetadataTools:
             memory_retriever: MemoryRetriever,
             cache: CacheStore | None = None,
             *,
-            cache_ttl_seconds: float = 300.0,
+            cache_ttl_seconds: float = 300.0
     ) -> None:
         self._memory: MemoryRetriever = memory_retriever
         self._cache: CacheStore | None = cache
@@ -47,7 +47,6 @@ class MetadataTools:
         seed_tables.update(self._tables_from_query_fields(query_spec))
         seed_tables.update(self._tables_from_semantic_definitions(memory, query_spec))
 
-        # schema_results: tuple[SchemaSearchResult, ...] = self._memory.get_tables(seed_tables)
         relationships: tuple[str, ...] = self._relevant_relationships(seed_tables)
         connected_tables: set[str] = set(seed_tables)
         for relationship in relationships:
@@ -60,18 +59,13 @@ class MetadataTools:
         output = RelevantMetadata(
             schema=tuple(asdict(item.table) for item in schema_results),
             relationships=relationships,
-            business=tuple(
-                {"name": item.name, "definition": item.definition}
-                for item in business_items
-            ),
-            metrics=tuple(
-                {"name": item.name, "definition": item.definition}
-                for item in metric_items
-            ),
+            business=tuple({"name": item.name, "definition": item.definition} for item in business_items),
+            metrics=tuple({"name": item.name, "definition": item.definition} for item in metric_items),
             glossary=glossary,
         )
         if self._cache is not None:
             self._cache.set(key, output, ttl_seconds=self._ttl)
+
         return output
 
     @staticmethod
@@ -81,21 +75,17 @@ class MetadataTools:
         fields.extend(item.field for item in query_spec.sort)
         if query_spec.time_range is not None:
             fields.append(query_spec.time_range.field)
-        return {
-            field.split(".", 1)[0].lower()
-            for field in fields
-            if "." in field
-        }
+        return {field.split(".", 1)[0].lower() for field in fields if "." in field}
 
     @staticmethod
     def _tables_from_semantic_definitions(memory: MemoryContext, query_spec: QuerySpec) -> set[str]:
         texts: list[str] = []
         if query_spec.metric:
-            texts.extend(
-                item.definition
-                for item in memory.metrics
-                if item.name.lower() == query_spec.metric.lower()
-            )
+            exact_metrics = [item for item in memory.metrics if item.name.lower() == query_spec.metric.lower()]
+
+            selected_metrics = (exact_metrics if exact_metrics else list(memory.metrics[:1]))
+
+            texts.extend(item.definition for item in selected_metrics)
         query_lower: str = (query_spec.intent or "").lower()
         texts.extend(
             item.definition
@@ -105,7 +95,11 @@ class MetadataTools:
         tables: set[str] = set()
         for text in texts:
             tables.update(
-                match.lower() for match in re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\.[a-zA-Z_][a-zA-Z0-9_]*\b", text))
+                match.lower() for match in re.findall(
+                    r"\b([a-zA-Z_][a-zA-Z0-9_]*)\.[a-zA-Z_][a-zA-Z0-9_]*\b",
+                    text,
+                )
+            )
         return tables
 
     @staticmethod
@@ -132,8 +126,10 @@ class MetadataTools:
             for target in seeds[index + 1:]:
                 path: list[str] = cls._shortest_path(graph, start, target)
                 for offset in range(len(path) - 1):
-                    selected_edges.add(tuple(sorted((path[offset], path[offset + 1]))))
+                    left: str = path[offset]
+                    right: str = path[offset + 1]
 
+                    selected_edges.add((left, right) if left <= right else (right, left))
         return tuple(
             relationship
             for relationship in RELATIONSHIPS
@@ -143,7 +139,11 @@ class MetadataTools:
     @classmethod
     def _relationship_edge(cls, relationship: str) -> tuple[str, str]:
         tables: set[str] = cls._relationship_tables(relationship)
-        return tuple(sorted(tables)) if len(tables) == 2 else ("", "")
+        if len(tables) != 2:
+            return "", ""
+
+        ordered: list[str] = sorted(tables)
+        return ordered[0], ordered[1]
 
     @staticmethod
     def _shortest_path(graph: dict[str, list[str]], start: str, target: str) -> list[str]:
@@ -168,9 +168,16 @@ class MetadataTools:
     def _select_metrics(memory: MemoryContext, query_spec: QuerySpec) -> tuple[Any, ...]:
         if query_spec.metric:
             exact = tuple(item for item in memory.metrics if item.name.lower() == query_spec.metric.lower())
+
             if exact:
                 return exact
-        return tuple(memory.metrics)
+
+        if not memory.metrics:
+            return ()
+
+        max_score: float = max(item.score for item in memory.metrics)
+
+        return tuple(item for item in memory.metrics if item.score == max_score)
 
     @staticmethod
     def _select_business(memory: MemoryContext, query_spec: QuerySpec) -> tuple[Any, ...]:
@@ -205,9 +212,6 @@ class MetadataTools:
 
     @staticmethod
     def _key(query_spec: QuerySpec) -> str:
-        payload: bytes = json.dumps(
-            query_spec.model_dump(mode="json"),
-            sort_keys=True,
-            ensure_ascii=False,
-        ).encode("utf-8")
+        payload: bytes = (json.dumps(query_spec.model_dump(mode="json"), sort_keys=True, ensure_ascii=False)
+                          .encode("utf-8"))
         return "metadata:" + hashlib.sha256(payload).hexdigest()
