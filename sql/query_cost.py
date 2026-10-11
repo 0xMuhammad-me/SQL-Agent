@@ -1,109 +1,77 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Mapping, Protocol
 
 
-class CostDatabase(Protocol):
-    """
-    Minimal database interface required by the cost guard.
-    """
+class CostStatus(str, Enum):
+    ALLOWED = "allowed"
+    TOO_EXPENSIVE = "too_expensive"
+    INCONCLUSIVE = "inconclusive"
 
-    def explain(self, sql: str, parameters: Mapping[str, Any]) -> Mapping[str, Any]:
-        """
-        Return query execution plan information.
-        """
-        ...
+
+class CostDatabase(Protocol):
+    def explain(self, sql: str, parameters: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
 
 @dataclass(frozen=True, slots=True)
 class CostGuardResult:
-    """
-    Result of query cost validation.
-    """
-
-    allowed: bool
-    estimated_cost: float | None
-    estimated_rows: int | None
-    validation_required: bool = True
+    status: CostStatus
+    estimated_cost: float | None = None
+    estimated_rows: int | None = None
     reason: str | None = None
+
+    @property
+    def allowed(self) -> bool: return self.status == CostStatus.ALLOWED
 
 
 class QueryCostGuard:
-    """
-    Prevents execution of excessively expensive queries.
-    """
+    def __init__(self, database: CostDatabase, *, max_cost: float = 100000.0,
+                 max_estimated_rows: int = 1000000) -> None:
+        self._db = database
+        self._max_cost = max_cost
+        self._max_rows = max_estimated_rows
 
-    def __init__(self, database: CostDatabase, *, max_cost: float = 100_000.0,
-                 max_estimated_rows: int = 1_000_000) -> None:
-        self._database: CostDatabase = database
-        self._max_cost: float = max_cost
-        self._max_estimated_rows: int = max_estimated_rows
-
-    def validate(self, sql: str, parameters: Mapping[str, Any], *, validated: bool = False) -> CostGuardResult:
-        """
-        Validate query cost using EXPLAIN.
-        """
-
+    def validate(self, sql: str, parameters: Mapping[str, Any]) -> CostGuardResult:
         try:
-            if not validated:
-                return CostGuardResult(
-                    allowed=False,
-                    estimated_cost=None,
-                    estimated_rows=None,
-                    reason="SQL validation required before cost analysis."
-                )
+            plan = self._db.explain(sql, parameters)
+            cost = self._number(plan, "Total Cost")
+            rows = self._integer(plan, "Plan Rows")
 
-            plan: Mapping[str, Any] = self._database.explain(sql, parameters)
-            estimated_cost: float | None = self._extract_cost(plan)
-            estimated_rows: int | None = self._extract_rows(plan)
-
-            if estimated_cost is not None and estimated_cost > self._max_cost:
+            if cost is not None and cost > self._max_cost:
                 return CostGuardResult(
-                    allowed=False,
-                    estimated_cost=estimated_cost,
-                    estimated_rows=estimated_rows,
-                    reason=(
-                        "Estimated query cost exceeds "
-                        "the configured maximum."
+                    CostStatus.TOO_EXPENSIVE,
+                    cost,
+                    rows,
+                    (
+                        f"Estimated query cost {cost:.2f} "
+                        f"exceeds configured maximum {self._max_cost:.2f}."
                     ),
                 )
 
-            if estimated_rows is not None and estimated_rows > self._max_estimated_rows:
+            if rows is not None and rows > self._max_rows:
                 return CostGuardResult(
-                    allowed=False,
-                    estimated_cost=estimated_cost,
-                    estimated_rows=estimated_rows,
-                    reason="Estimated row count exceeds the configured maximum."
+                    CostStatus.TOO_EXPENSIVE,
+                    cost,
+                    rows,
+                    (
+                        f"Estimated row count {rows} "
+                        f"exceeds configured maximum {self._max_rows}."
+                    ),
                 )
 
-            return CostGuardResult(allowed=True, estimated_cost=estimated_cost, estimated_rows=estimated_rows)
-
+            return CostGuardResult(CostStatus.ALLOWED, cost, rows)
         except Exception as exc:
             return CostGuardResult(
-                allowed=False,
-                estimated_cost=None,
-                estimated_rows=None,
-                reason=f"Unable to determine query cost: {type(exc).__name__}: {exc}"
-            )
+                CostStatus.INCONCLUSIVE,
+                reason=f"Unable to determine query cost: {type(exc).__name__}: {str(exc)}")
 
     @staticmethod
-    def _extract_cost(plan: Mapping[str, Any]) -> float | None:
-        """
-        Extract estimated total cost from EXPLAIN output.
-        """
-        value: Any = plan.get("Total Cost")
-        if value is None:
-            return None
-        return float(value)
+    def _number(plan: Mapping[str, Any], key: str) -> float | None:
+        v = plan.get(key)
+        return None if v is None else float(v)
 
     @staticmethod
-    def _extract_rows(plan: Mapping[str, Any], ) -> int | None:
-        """
-        Extract estimated row count from EXPLAIN output.
-        """
-        value: Any = plan.get("Plan Rows")
-        if value is None:
-            return None
-
-        return int(value)
+    def _integer(plan: Mapping[str, Any], key: str) -> int | None:
+        v = plan.get(key)
+        return None if v is None else int(v)
