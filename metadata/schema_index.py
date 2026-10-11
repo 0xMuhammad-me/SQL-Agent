@@ -1,37 +1,33 @@
 from __future__ import annotations
 
-from .schema_catalog import SCHEMA_CATALOG, TableSchema
+from metadata.schema_catalog import ColumnSchema, SCHEMA_CATALOG, TableSchema
 
 
 class SchemaIndex:
-    """
-    Fast lookup over schema metadata.
-    """
+    """Fast lookup over the trusted schema catalog."""
 
-    def __init__(self) -> None:
-        self.tables: dict[str, TableSchema] = { table.name: table for table in SCHEMA_CATALOG}
-        self.columns = {}
+    def __init__(self, tables: tuple[TableSchema, ...] = SCHEMA_CATALOG) -> None:
+        self._tables: dict[str, TableSchema] = {table.name.lower(): table for table in tables}
+        self._columns: dict[str, frozenset[str]] = {
+            table.name.lower(): frozenset(column.name.lower() for column in table.columns)
+            for table in tables
+        }
 
-        for table in SCHEMA_CATALOG:
-            for column in table.columns:
-                self.columns.setdefault(column.name,[]).append(table.name)
+    def has_table(self, table_name: str) -> bool:
+        return table_name.lower() in self._tables
 
+    def has_column(self, table_name: str, column_name: str) -> bool:
+        return column_name.lower() in self._columns.get(table_name.lower(), frozenset())
 
-    def has_table( self, table_name: str) -> bool:
-        return table_name.lower() in self.tables
+    def get_table(self, table_name: str) -> TableSchema | None:
+        return self._tables.get(table_name.lower())
 
-    def has_column( self, table_name: str, column_name: str) -> bool:
-        columns = self.get_table_columns(table_name)
-
-        return column_name.lower() in columns
-
-    def find_column_tables(  self,  column_name: str,) -> list[str]:
-        return self.columns.get( column_name.lower(), [])
-
-    def get_table_columns(  self, table_name: str ) -> list[str]:
-        table: TableSchema | None = self.tables.get(table_name.lower())
-
+    def get_column(self, table_name: str, column_name: str) -> ColumnSchema | None:
+        table: TableSchema | None = self.get_table(table_name)
         if table is None:
-            return []
+            return None
+        target: str = column_name.lower()
+        return next((column for column in table.columns if column.name.lower() == target), None)
 
-        return [ column.name.lower() for column in table.columns]
+    def tables(self) -> tuple[str, ...]:
+        return tuple(sorted(self._tables))

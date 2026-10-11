@@ -43,9 +43,7 @@ METRIC_DEFINITIONS = {
     """
     Average order value:
 
-    SUM(orders.total_amount)
-    /
-    COUNT(DISTINCT orders.order_id)
+    SUM(orders.total_amount) / COUNT(DISTINCT orders.order_id)
 
 
     Successful orders only.
@@ -115,9 +113,7 @@ METRIC_DEFINITIONS = {
     """
     Product conversion rate:
 
-    purchase events
-    /
-    product view events
+    purchase events / product view events
 
 
     Source:
@@ -131,9 +127,7 @@ METRIC_DEFINITIONS = {
     """
     Formula:
 
-    abandoned carts
-    /
-    all carts
+    abandoned carts / all carts
 
 
     carts.status='abandoned'
@@ -145,9 +139,7 @@ METRIC_DEFINITIONS = {
     """
     Formula:
 
-    converted carts
-    /
-    all carts
+    converted carts / all carts
 
 
     carts.status='converted'
@@ -283,6 +275,252 @@ METRIC_DEFINITIONS = {
     Current stock for a product variant is stored in:
     
     product_variants.stock_quantity
+    """,
+
+
+
+    "customer_event_count":
+    """
+    Total number of customer behavior events.
+    
+    Formula:
+    
+    COUNT(customer_events.event_id)
+    
+    Source:
+    customer_events
+    
+    No event_type filter by default.
+    
+    This metric may be grouped by:
+    - event_type
+    - product_id
+    - customer_id
+    - event_time
+    """,
+
+
+
+    "product_count":
+    """
+    Total number of products.
+    
+    Formula:
+    
+    COUNT(products.product_id)
+    
+    Source:
+    products
+    
+    Product filters such as category or brand may be applied
+    when explicitly requested.
+    """,
+
+
+
+    "available_product_count":
+    """
+    Number of distinct products that currently have stock available.
+    
+    Formula:
+    
+    COUNT(DISTINCT product_variants.product_id)
+    
+    Source:
+    product_variants
+    
+    Availability rule:
+    
+    product_variants.stock_quantity > 0
+    
+    A product is considered available when at least one
+    of its variants has positive stock.
+    
+    Do not require product or variant is_active unless
+    an explicit business definition specifies that availability
+    also depends on active status.
+    """,
+
+
+
+    "customer_count":
+    """
+    Total number of customers.
+    
+    Formula:
+    
+    COUNT(customers.customer_id)
+    
+    Source:
+    customers
+    
+    Customer dimensions such as city or segment may be used
+    when explicitly requested.
+    """,
+
+
+
+    "product_view_count":
+    """
+    Total number of product view events.
+    
+    Formula:
+    
+    COUNT(customer_events.event_id)
+    
+    Source:
+    customer_events
+    
+    Filter:
+    
+    customer_events.event_type = 'view_product'
+    
+    This metric may be grouped by product_id.
+    """,
+
+
+
+    "delivered_order_revenue":
+    """
+    Revenue from delivered orders.
+    
+    Formula:
+    
+    SUM(orders.total_amount)
+    
+    Filter:
+    
+    orders.status = 'delivered'
+    
+    Source:
+    orders
+    """,
+
+
+
+    "average_product_price":
+    """
+    Average product price.
+    
+    Formula:
+    
+    AVG(products.price)
+    
+    Source:
+    products
+    
+    Product filters such as brand or category may be applied
+    when explicitly requested.
+    """,
+
+
+
+    "order_count":
+    """
+    Total number of orders placed.
+    
+    Formula:
+    
+    COUNT(orders.order_id)
+    
+    Source:
+    orders
+    
+    No successful-order status filter by default.
+    
+    This metric may be grouped by order_date, including
+    monthly grouping using DATE_TRUNC('month', order_date).
+    """,
+
+
+
+    "average_order_value_all_orders":
+    """
+    Average order value across all orders.
+    
+    Formula:
+    
+    AVG(orders.total_amount)
+    
+    Source:
+    orders
+    
+    No successful-order status filter by default.
+    
+    This metric may be grouped by customer segment or
+    other customer dimensions through the orders.customer_id
+    relationship.
+    """,
+
+
+
+    "product_category_revenue":
+    """
+    Revenue by product category based on order item sales.
+    
+    Formula:
+    
+    SUM(
+        order_items.quantity
+        * (order_items.unit_price - order_items.discount_amount)
+    )
+    
+    Source:
+    order_items
+    
+    Join:
+    
+    order_items.product_id = products.product_id
+    
+    Product category is obtained from:
+    
+    products.category
+    
+    No successful-order status filter by default.
+    """,
+
+
+
+    "average_rating_by_product_category":
+    """
+    Average product rating by product category.
+    
+    Formula:
+    
+    AVG(reviews.rating)
+    
+    Source:
+    reviews
+    
+    Join:
+    
+    reviews.product_id = products.product_id
+    
+    Product category is obtained from:
+    
+    products.category
+    """,
+
+
+
+    "product_units_sold_all_orders":
+    """
+    Total product units sold across all orders.
+    
+    Formula:
+    
+    SUM(order_items.quantity)
+    
+    Source:
+    order_items
+    
+    Join:
+    
+    order_items.product_id = products.product_id
+    
+    No successful-order status filter by default.
+    
+    This metric may be grouped by product_id or product_name.
     """,
 
 }

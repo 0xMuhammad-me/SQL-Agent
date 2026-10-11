@@ -104,6 +104,8 @@ SCHEMA_CATALOG = (
 
             ColumnSchema("sku", "varchar", False),
 
+            ColumnSchema("brand", "varchar", True),
+
             ColumnSchema("product_name", "varchar", False),
 
             ColumnSchema("category", "varchar", True),
@@ -464,7 +466,7 @@ SCHEMA_CATALOG = (
             ),
 
             ColumnSchema(
-                "created_at",
+                "added_at",
                 "timestamp",
                 False
             ),
@@ -496,7 +498,7 @@ SCHEMA_CATALOG = (
             ),
 
             ColumnSchema(
-                "created_at",
+                "added_at",
                 "timestamp",
                 False
             ),
@@ -550,3 +552,4 @@ SCHEMA_CATALOG = (
     ),
 
 )
+
