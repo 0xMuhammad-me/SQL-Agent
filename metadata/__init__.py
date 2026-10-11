@@ -1,14 +1,17 @@
-from .schema_catalog import SCHEMA_CATALOG
-from .relationship_catalog import RELATIONSHIPS
 from .business_catalog import BUSINESS_DEFINITIONS
-from .metric_catalog import METRIC_DEFINITIONS
 from .glossary import GLOSSARY
-
+from .metric_catalog import METRIC_DEFINITIONS
+from .relationship_catalog import RELATIONSHIPS
+from .schema_catalog import SCHEMA_CATALOG, ColumnSchema, TableSchema
+from .schema_index import SchemaIndex
 
 __all__ = [
-    "SCHEMA_CATALOG",
-    "RELATIONSHIPS",
     "BUSINESS_DEFINITIONS",
-    "METRIC_DEFINITIONS",
     "GLOSSARY",
+    "METRIC_DEFINITIONS",
+    "RELATIONSHIPS",
+    "SCHEMA_CATALOG",
+    "ColumnSchema",
+    "SchemaIndex",
+    "TableSchema",
 ]

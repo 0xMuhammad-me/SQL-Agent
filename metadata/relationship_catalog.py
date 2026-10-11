@@ -65,3 +65,4 @@ RELATIONSHIPS = (
     "inventory_events.variant_id = product_variants.variant_id",
 
 )
+
