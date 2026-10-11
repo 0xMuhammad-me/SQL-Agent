@@ -783,30 +783,9 @@ class SQLWorkflow:
                 trace_id=context.trace_id,
                 stage_name="workflow",
                 input_data={"question_length": len(context.user_query)},
-                status="started",
+                status="started"
             )
         )
-
-    # def _log_query_spec_validation(
-    #         self,
-    #         *,
-    #         context: AgentContext,
-    #         validation: QuerySpecValidationResult,
-    # ) -> None:
-    #     self.logger.log(
-    #         AgentEvent(
-    #             event_type=EventType.QUERY_SPEC_VALIDATED,
-    #             trace_id=context.trace_id,
-    #             agent_name=self.agent_name,
-    #             stage_name="query_spec_validation",
-    #             output_data={
-    #                 "valid": validation.valid,
-    #                 "issue_count": len(validation.issues),
-    #                 "issues": list(validation.issues),
-    #             },
-    #             status="success" if validation.valid else "error",
-    #         )
-    #     )
 
     def _log_sql_validation(
             self,
