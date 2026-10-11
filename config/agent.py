@@ -1,12 +1,3 @@
-from dataclasses import dataclass
+from .settings import AGENT_CONFIG,AgentSettings
 
-
-@dataclass(frozen=True)
-class AgentConfig:
-    max_iterations:int=3
-    enable_reflection:bool=True
-    enable_planning:bool=True
-    enable_tool_validation:bool=True
-
-
-AGENT_CONFIG = AgentConfig()
+__all__=["AGENT_CONFIG","AgentSettings"]
