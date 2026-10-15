@@ -17,6 +17,42 @@ The goal is to let business users ask questions without needing to know SQL synt
 
 ---
 
+## Database Overview
+
+The Lunato dataset is a synthetic e-commerce database designed for developing
+and evaluating a Text-to-SQL agent.
+
+The database contains 13 tables covering customers, products, orders,
+inventory, customer behavior, and benchmark data.
+
+### Tables and Row Counts
+
+| Table | Rows | Description |
+|---|---:|---|
+| `customers` | 200,000 | Customer information |
+| `products` | 20,000 | Product catalog |
+| `product_variants` | 39,957 | Product variants |
+| `orders` | 1,000,000 | Customer orders |
+| `order_items` | 2,760,580 | Individual items within orders |
+| `customer_events` | 10,000,000 | Customer behavior and interaction events |
+| `reviews` | 278,263 | Product reviews |
+| `wishlist` | 500,000 | Customer wishlist entries |
+| `carts` | 400,000 | Shopping carts |
+| `cart_items` | 799,840 | Items within shopping carts |
+| `inventory_events` | 139,836 | Inventory changes and events |
+
+### Dataset Statistics
+
+- **Total tables:** 13
+- **Total rows:** 16,139,476
+- **Customers:** 200,000
+- **Products:** 20,000
+- **Orders:** 1,000,000
+- **Customer events:** 10,000,000
+- **Benchmark questions:** 1,000
+
+---
+
 # 🎯 Problem Statement
 
 Organizations store business data across many related tables. Getting reliable answers from that data often requires:
