@@ -8,8 +8,8 @@ from typing import Any, Mapping, Sequence
 
 import sqlglot
 
-from orchestration import AgentRequest, SQLAgent, WorkflowResult, WorkflowStatus
-from sql import DatabaseExecutor
+from sql_agent.orchestration import AgentRequest, SQLAgent, WorkflowResult, WorkflowStatus
+from sql_agent.sql import DatabaseExecutor
 
 
 @dataclass(frozen=True, slots=True)
