@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from app import build_sql_agent
-from config import BENCHMARK_CONFIG, DB_CONFIG, SECURITY_CONFIG
+from sql_agent.app import build_sql_agent
+from sql_agent.config import BENCHMARK_CONFIG, DB_CONFIG, SECURITY_CONFIG
 from evaluation import BenchmarkEvaluator, BenchmarkRunner
-from sql import DatabaseExecutor
+from sql_agent.sql import DatabaseExecutor
 
 
 def main() -> None:

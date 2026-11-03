@@ -17,6 +17,60 @@ The goal is to let business users ask questions without needing to know SQL synt
 
 ---
 
+# 🚀 Getting Started
+
+## Prerequisites
+
+- Python 3.11 or later.
+- Access to a PostgreSQL database.
+- An API key for the configured LLM provider.
+
+## Installation
+
+Clone the repository and navigate to the project root.
+
+Install the project dependencies:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Install the project in editable mode:
+
+```bash
+python -m pip install -e .
+```
+
+Editable installation makes the `sql_agent` package importable while allowing changes to the source code without reinstalling the package.
+
+## Configuration
+
+Create a `.env` file from the provided example:
+
+```text
+.env.example
+```
+
+Configure the required database connection and LLM provider settings in `.env`.
+
+## Running the Application
+
+Start the Text-to-SQL agent:
+
+```bash
+python -m sql_agent.run
+```
+
+## Running the Benchmark
+
+Execute the benchmark evaluation:
+
+```bash
+python -m evaluation.run_benchmark
+```
+
+---
+
 ## Database Overview
 
 The Lunato dataset is a synthetic e-commerce database designed for developing
@@ -397,7 +451,7 @@ The project includes a benchmark evaluator for measuring the behavior of the Tex
 
 The benchmark dataset is configured through the application configuration and is currently expected at:
 
-`evaluation/benchmark_questions.csv`
+`evaluation`
 
 Each benchmark row includes fields such as:
 
@@ -518,7 +572,7 @@ Per-question details make it possible to investigate mismatches and failures wit
 
 The benchmark report is written to:
 
-`reports/benchmark_report.json`
+`reports`
 
 The report contains benchmark execution metadata, aggregate metrics, category and difficulty breakdowns, and per-question results. A live benchmark run should be distinguished from any report reconstructed from historical logs; the report mode and matching method should describe how its results were obtained.
 
